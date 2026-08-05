@@ -1,0 +1,11 @@
+# 依赖
+node_modules/
+
+# 环境配置（含 MySQL 凭据和 JWT 密钥，绝不入库）
+.env
+.env.*
+!.env.example
+
+# 运行时数据
+data/
+*.log

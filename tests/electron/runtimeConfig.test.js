@@ -1,0 +1,170 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const test = require('node:test');
+
+const {
+  classifySettingsChange,
+  envelopeFromSettings,
+  limitsConfigFromSettings,
+  usageConfigFromSettings
+} = require('../../src/electron/runtimeConfig');
+
+test('runtime config keeps usage, limits credentials, and envelope in separate inputs', () => {
+  const settings = {
+    deviceId: 'device-1',
+    clients: 'claude,cursor',
+    collectionIntervalMs: 300000,
+    limitsRefreshMs: 60000,
+    claudeWebCookie: 'sessionKey=settings-secret',
+    kimiApiKey: 'secret',
+    openrouterProfiles: { work: { apiKey: 'openrouter-secret', enabled: true } },
+    thirdPartyProfiles: {
+      relay: {
+        adapter: 'newapi-account',
+        baseUrl: 'https://api.example.com',
+        accessToken: 'access-secret',
+        userId: '42',
+        enabled: true
+      }
+    },
+    zaiApiRegion: 'bigmodel-cn'
+  };
+  const usage = usageConfigFromSettings(settings, {
+    agentVersion: '1.2.3',
+    intervalMs: 120000,
+    historyIntervalMs: 900000,
+    watchEnabled: true
+  });
+  const limits = limitsConfigFromSettings(settings, { env: {}, defaultLimitProviders: 'kimi,zai' });
+  const envelope = envelopeFromSettings(settings, { agentVersion: '1.2.3' });
+
+  assert.equal(usage.intervalMs, 120000);
+  assert.equal(Object.hasOwn(usage, 'kimiApiKey'), false);
+  assert.equal(limits.claudeWebCookie, 'sessionKey=settings-secret');
+  assert.equal(limits.kimiApiKey, 'secret');
+  assert.deepEqual(limits.openrouterProfiles, { work: { apiKey: 'openrouter-secret', enabled: true } });
+  assert.deepEqual(limits.thirdPartyProfiles, {
+    relay: {
+      adapter: 'newapi-account',
+      baseUrl: 'https://api.example.com',
+      accessToken: 'access-secret',
+      userId: '42',
+      enabled: true
+    }
+  });
+  assert.equal(Object.hasOwn(limits, 'clients'), false);
+  assert.deepEqual(envelope, {
+    deviceId: 'device-1',
+    agentVersion: '1.2.3',
+    agentRuntime: 'electron-widget'
+  });
+});
+
+test('limits config resolves managed credentials at dispatch time through context', () => {
+  const limits = limitsConfigFromSettings({ codexManagedAccounts: [{ id: 'stale' }] }, {
+    env: {},
+    codexManagedAccounts: [{ id: 'live', homePath: '/tmp/live' }],
+    mimoManagedAccounts: [{ id: 'mimo', cookieHeader: 'allowlisted' }]
+  });
+  assert.deepEqual(limits.codexManagedAccounts, [{ id: 'live', homePath: '/tmp/live' }]);
+  assert.deepEqual(limits.mimoManagedAccounts, [{ id: 'mimo', cookieHeader: 'allowlisted' }]);
+});
+
+test('settings classifier separates structural, limits reconfigure, sink, and provider invalidation changes', () => {
+  const previous = {
+    hubMode: 'local',
+    clients: 'claude',
+    limitsRefreshMs: 300000,
+    syncUploadIntervalMs: 0,
+    kimiApiKey: 'old'
+  };
+  const next = {
+    ...previous,
+    clients: 'claude,cursor',
+    limitsRefreshMs: 60000,
+    syncUploadIntervalMs: 600000,
+    kimiApiKey: 'new'
+  };
+  const classification = classifySettingsChange(previous, next);
+  assert.equal(classification.modeStructural, false);
+  assert.equal(classification.usageStructural, true);
+  assert.equal(classification.limitsReconfigure, true);
+  assert.equal(classification.sinkStructural, true);
+  assert.deepEqual(classification.limitScopes, [{ provider: 'kimi' }]);
+});
+
+test('SaaS login keys (saasUrl, saasEmail, saasToken) trigger mode rebuild', () => {
+  const base = { hubMode: 'saas', saasUrl: 'https://saas.example.com', saasEmail: 'a@b.com', saasToken: 't1' };
+  const cases = [
+    { ...base, saasToken: 't2' },     // 登录/换 token
+    { ...base, saasEmail: 'c@d.com' }, // 换账号
+    { ...base, saasUrl: 'https://other.example.com' } // 换端点
+  ];
+  for (const next of cases) {
+    const classification = classifySettingsChange(base, next);
+    assert.equal(classification.modeStructural, true, `expected modeStructural for ${JSON.stringify(next)}`);
+  }
+});
+
+test('saasRefreshToken 变化不触发模式重建（静默续期不应重启采集器）', () => {
+  const base = { hubMode: 'saas', saasUrl: 'https://saas.example.com', saasEmail: 'a@b.com', saasToken: 't1', saasRefreshToken: 'r1' };
+  const next = { ...base, saasRefreshToken: 'r2' };
+  const classification = classifySettingsChange(base, next);
+  assert.equal(classification.modeStructural, false);
+});
+
+test('saas hubMode value is accepted as a mode-structural change vs local', () => {
+  const classification = classifySettingsChange({ hubMode: 'local' }, { hubMode: 'saas' });
+  assert.equal(classification.modeStructural, true);
+});
+
+test('display-only settings do not restart producers or probe providers', () => {
+  const classification = classifySettingsChange(
+    { currency: 'USD', theme: 'dark' },
+    { currency: 'HKD', theme: 'light' }
+  );
+  assert.equal(classification.modeStructural, false);
+  assert.equal(classification.usageStructural, false);
+  assert.equal(classification.limitsReconfigure, false);
+  assert.equal(classification.sinkStructural, false);
+  assert.deepEqual(classification.limitScopes, []);
+});
+
+test('OpenRouter profile changes invalidate only the OpenRouter limits lane', () => {
+  const classification = classifySettingsChange(
+    { openrouterProfiles: { work: { apiKey: 'old', enabled: true } } },
+    { openrouterProfiles: { work: { apiKey: 'new', enabled: true } } }
+  );
+  assert.deepEqual(classification.limitScopes, [{ provider: 'openrouter' }]);
+});
+
+test('Claude Web cookie falls back to env and invalidates only the Claude limits lane', () => {
+  const limits = limitsConfigFromSettings({}, {
+    env: { CLAUDE_WEB_COOKIE: 'sessionKey=env-secret' }
+  });
+  assert.equal(limits.claudeWebCookie, 'sessionKey=env-secret');
+
+  const classification = classifySettingsChange(
+    { claudeWebCookie: '' },
+    { claudeWebCookie: 'sessionKey=settings-secret' }
+  );
+  assert.deepEqual(classification.limitScopes, [{ provider: 'claude' }]);
+  assert.equal(classification.limitsReconfigure, false);
+});
+
+test('third-party profile changes invalidate only the third-party limits lane', () => {
+  const classification = classifySettingsChange(
+    {
+      thirdPartyProfiles: {
+        work: { adapter: 'newapi-token', baseUrl: 'https://old.example', apiKey: 'old', enabled: true }
+      }
+    },
+    {
+      thirdPartyProfiles: {
+        work: { adapter: 'newapi-token', baseUrl: 'https://new.example', apiKey: 'new', enabled: true }
+      }
+    }
+  );
+  assert.deepEqual(classification.limitScopes, [{ provider: 'thirdparty' }]);
+});

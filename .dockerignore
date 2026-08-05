@@ -1,0 +1,24 @@
+# Docker 构建忽略文件（构建上下文为仓库根）
+node_modules
+**/node_modules
+dist
+build
+.git
+.claude
+.agents
+data
+*.log
+site
+worker
+tests
+docs
+
+# 环境（含凭据，绝不进镜像）
+.env
+**/.env
+**/.env.*
+!**/.env.example
+
+# 编辑器/系统
+.DS_Store
+*.swp
