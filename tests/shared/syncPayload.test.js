@@ -32,6 +32,32 @@ test('syncPayload carries OS version metadata to the hub', () => {
   assert.equal(payload.osVersion, '26.0');
 });
 
+test('syncPayload omits today/month sessions when omitPeriodSessions is set', () => {
+  const summary = {
+    deviceId: 'dev-a',
+    today: { totalTokens: 10, sessions: { today: { totalTokens: 10 } } },
+    month: { totalTokens: 20, sessions: { month: { totalTokens: 20 } } },
+    allTime: { totalTokens: 30, sessions: { old: { totalTokens: 30 } } }
+  };
+  const payload = syncPayload(summary, { omitPeriodSessions: true });
+  assert.equal(Object.hasOwn(payload.today, 'sessions'), false);
+  assert.equal(Object.hasOwn(payload.month, 'sessions'), false);
+  assert.equal(Object.hasOwn(payload.allTime, 'sessions'), false);
+  assert.equal(payload.today.totalTokens, 10);
+  assert.equal(payload.month.totalTokens, 20);
+});
+
+test('syncPayload keeps today/month sessions for self-hosted sync by default', () => {
+  const summary = {
+    today: { totalTokens: 10, sessions: { today: { totalTokens: 10 } } },
+    month: { totalTokens: 20, sessions: { month: { totalTokens: 20 } } },
+    allTime: { totalTokens: 30 }
+  };
+  const payload = syncPayload(summary);
+  assert.deepEqual(payload.today.sessions, summary.today.sessions);
+  assert.deepEqual(payload.month.sessions, summary.month.sessions);
+});
+
 test('syncPayload bounds uploads by omitting all-time sessions', () => {
   const summary = {
     deviceId: 'dev-a',

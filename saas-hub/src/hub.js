@@ -20,14 +20,20 @@ const {
   subscriptionDocument
 } = require('../../src/shared/subscriptionDisplay');
 const { CURRENCY_CODES, normalizeCurrency } = require('../../src/shared/currency');
+const { stripSessionDetailFromRecord, stripSessionsFromStats } = require('./deviceRecord');
 
 function createHub({ pool, db, sseRegistry, staleAfterMs }) {
   // 实际传入 db 模块（已注入 pool 的函数集），或用 pool + 默认 db
   const dbApi = db || require('./db');
 
+  async function loadDevices(userId) {
+    const devices = await dbApi.listDevicesByUser(pool, userId);
+    return devices.map(stripSessionDetailFromRecord);
+  }
+
   // ---- 聚合（复用 aggregateDevices）----
   async function getStats(userId) {
-    const devices = await dbApi.listDevicesByUser(pool, userId);
+    const devices = await loadDevices(userId);
     const stats = aggregateDevices(devices, staleAfterMs);
     stats.staleAfterMs = staleAfterMs;
     const history = aggregateHistory(devices);
@@ -36,16 +42,16 @@ function createHub({ pool, db, sseRegistry, staleAfterMs }) {
     // 订阅版本戳（只给版本，不给列表本身——同现有 hub，避免每帧都带钱数据）
     const subs = await dbApi.getSubscriptions(pool, userId);
     stats.subscriptionsUpdatedAt = subs?.updatedAt || '';
-    return stats;
+    return stripSessionsFromStats(stats);
   }
 
   async function getHistory(userId) {
-    const devices = await dbApi.listDevicesByUser(pool, userId);
+    const devices = await loadDevices(userId);
     return aggregateHistory(devices);
   }
 
   async function getDevices(userId) {
-    const devices = await dbApi.listDevicesByUser(pool, userId);
+    const devices = await loadDevices(userId);
     return { devices };
   }
 
@@ -68,7 +74,9 @@ function createHub({ pool, db, sseRegistry, staleAfterMs }) {
 
     // 合并：incoming 缺 limits/history 时沿用旧值（mergeDeviceRecord 已处理）
     const existing = await dbApi.getDevice(pool, userId, deviceId);
-    const record = mergeDeviceRecord(existing, { ...payload, receivedAt: new Date().toISOString() });
+    const record = stripSessionDetailFromRecord(
+      mergeDeviceRecord(existing, { ...payload, receivedAt: new Date().toISOString() })
+    );
 
     await dbApi.upsertDevice(pool, userId, record);
 

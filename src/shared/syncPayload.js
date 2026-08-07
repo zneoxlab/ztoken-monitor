@@ -103,7 +103,7 @@ function sessionsWithoutProjectMetadata(sessions) {
   return sanitized;
 }
 
-function buildSyncPayload(summary, { omitAllTimeProjects = false } = {}) {
+function buildSyncPayload(summary, { omitAllTimeProjects = false, omitPeriodSessions = false } = {}) {
   if (!summary || typeof summary !== 'object') return summary;
   const payload = { ...summary, limits: syncLimits(summary.limits) };
   const projectsEnabled = summary.projectsEnabled !== false;
@@ -117,7 +117,9 @@ function buildSyncPayload(summary, { omitAllTimeProjects = false } = {}) {
     if (!period || typeof period !== 'object') continue;
     payload[periodName] = { ...period };
     delete payload[periodName].projects;
-    if (!projectsEnabled && hasOwn(payload[periodName], 'sessions')) {
+    if (omitPeriodSessions) {
+      delete payload[periodName].sessions;
+    } else if (!projectsEnabled && hasOwn(payload[periodName], 'sessions')) {
       payload[periodName].sessions = sessionsWithoutProjectMetadata(payload[periodName].sessions);
     }
   }
@@ -150,7 +152,7 @@ function serializeSyncPayload(summary, options = {}) {
     payload = buildSyncPayload(summary, { ...options, omitAllTimeProjects: true });
     body = JSON.stringify(payload);
   }
-  if (Buffer.byteLength(body, 'utf8') > maxBytes) {
+  if (Buffer.byteLength(body, 'utf8') > maxBytes && !options.omitPeriodSessions) {
     // Month detail is the first collection to grow large enough to threaten the
     // ingest limit. Keep today's most useful live detail for as long as possible.
     for (const periodName of ['month', 'today']) {
@@ -166,8 +168,8 @@ function syncPayload(summary, options = {}) {
   return serializeSyncPayload(summary, options).payload;
 }
 
-async function postSyncPayload(fetchFn, url, { headers = {}, summary, logger } = {}) {
-  let serialized = serializeSyncPayload(summary);
+async function postSyncPayload(fetchFn, url, { headers = {}, summary, logger, omitPeriodSessions = false } = {}) {
+  let serialized = serializeSyncPayload(summary, { omitPeriodSessions });
   if (serialized.payload?.allTimeProjectsOmitted === true && typeof logger === 'function') {
     logger(`all-time project breakdown omitted; payload reduced to ${serialized.bytes} bytes (budget ${SYNC_PAYLOAD_BUDGET_BYTES})`);
   }
@@ -189,7 +191,7 @@ async function postSyncPayload(fetchFn, url, { headers = {}, summary, logger } =
     && projectEntries(serialized.payload?.allTime) > 0;
   if (canRetryWithoutProjects) {
     try { await response.arrayBuffer(); } catch (_) { /* best-effort drain before retry */ }
-    serialized = serializeSyncPayload(summary, { omitAllTimeProjects: true });
+    serialized = serializeSyncPayload(summary, { omitAllTimeProjects: true, omitPeriodSessions });
     if (typeof logger === 'function') logger('hub rejected the payload; retrying once without all-time projects');
     response = await fetchFn(url, { method: 'POST', headers, body: serialized.body });
   }

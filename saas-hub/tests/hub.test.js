@@ -130,6 +130,32 @@ test('ingest 触发 SSE 广播给当前用户', async () => {
   assert.equal(sse.broadcasts[0].reason, 'ingest');
 });
 
+test('ingest 不存储或广播 session 明细', async () => {
+  const { hub, db, sse } = setup();
+  const { record, stats } = await hub.ingest(1, {
+    deviceId: 'dev-a',
+    today: { totalTokens: 5, sessions: { 'claude:s1': { totalTokens: 5 } } },
+    month: { totalTokens: 8, sessions: { 'claude:s2': { totalTokens: 8 } } },
+    allTime: { totalTokens: 10, sessions: { 'claude:s3': { totalTokens: 10 } } },
+    sessionDetailsOmitted: { month: 3 }
+  });
+
+  const stored = await db.getDevice(null, 1, 'dev-a');
+  assert.equal(Object.hasOwn(record.periods.today, 'sessions'), false);
+  assert.equal(Object.hasOwn(record.periods.month, 'sessions'), false);
+  assert.equal(Object.hasOwn(record.periods.allTime, 'sessions'), false);
+  assert.equal(Object.hasOwn(stored.periods.today, 'sessions'), false);
+  assert.equal(stored.periods.today.totalTokens, 5);
+  assert.equal(
+    Object.hasOwn(stats.devices[0].periods.today, 'sessions'),
+    false
+  );
+  assert.equal(
+    Object.hasOwn(sse.broadcasts[0].stats.devices[0].periods.today, 'sessions'),
+    false
+  );
+});
+
 // ---- getStats / getDevices / getHistory ----
 
 test('getStats 只聚合当前用户的设备', async () => {
