@@ -56,10 +56,6 @@ test('MySQL CRUD 往返：upsert + get + list + delete', { todo: false }, async 
   assert.equal(got.hostname, 'mb');
   assert.equal(got.today.totalTokens, 5);
 
-  // owner 查询
-  const owner = await db.getDeviceOwner(pool, record.deviceId);
-  assert.equal(owner, userId);
-
   // list
   const all = await db.listDevicesByUser(pool, userId);
   assert.ok(all.some((d) => d.deviceId === record.deviceId));
@@ -163,7 +159,6 @@ test('多租户隔离：两用户同 deviceId 不冲突', async (t) => {
   const d2 = await db.getDevice(pool, u2.id, sharedDeviceId);
   assert.equal(d1.today.totalTokens, 1);
   assert.equal(d2.today.totalTokens, 2);
-  // owner 查询返回第一个（按 device_id LIMIT 1）——实际 hub 层用 ownership 检查防冲突
-  const owners = await pool.execute('SELECT user_id FROM devices WHERE device_id = :id', { id: sharedDeviceId });
-  assert.equal(owners[0].length, 2, '两用户各一条记录');
+  const rows = await pool.execute('SELECT user_id FROM devices WHERE device_id = :id', { id: sharedDeviceId });
+  assert.equal(rows[0].length, 2, '两用户各一条记录');
 });

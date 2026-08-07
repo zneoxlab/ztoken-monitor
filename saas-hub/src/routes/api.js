@@ -81,9 +81,6 @@ function createApiRoutes({ pool, hub, db, sseRegistry, sendJson }) {
       if (error.code === 'deviceId_required') {
         return sendJson(res, 400, { error: 'deviceId_required' });
       }
-      if (error.code === 'device_ownership_conflict') {
-        return sendJson(res, 403, { error: 'device_ownership_conflict', message: error.message });
-      }
       throw error;
     }
   }

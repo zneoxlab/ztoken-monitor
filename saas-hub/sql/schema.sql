@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 设备记录表：每条记录属于一个用户
--- device_id 由 widget 端生成，跨用户可能撞 id，所以联合唯一键是 (user_id, device_id)
+-- device_id 由 widget 端生成，跨用户可能相同；联合唯一键 (user_id, device_id) 定位记录
 -- payload_json 存完整 device record（today/month/allTime/limits/history + 可选字段）
 -- 读出时合并顶层列 + payload_json 全部键，确保 mergeDeviceRecord 读到的 existing 不丢字段
 CREATE TABLE IF NOT EXISTS devices (

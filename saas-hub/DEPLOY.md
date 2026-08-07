@@ -228,7 +228,7 @@ curl -N http://localhost:17322/api/stats/stream -H "Authorization: Bearer $TOKEN
 
 ### 7.9 多租户隔离（可选，验证关键安全点）
 
-注册第二个用户，用它的 token 上报同一个 deviceId，应得 403：
+注册第二个用户，用它的 token 上报同一个 deviceId，应各自成功（按 `user_id + device_id` 隔离）：
 
 ```bash
 TOKEN2=$(curl -s -X POST http://localhost:17322/api/auth/register \
@@ -239,14 +239,14 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:17322/api/inge
   -H "Authorization: Bearer $TOKEN2" \
   -H 'content-type: application/json' \
   -d '{"deviceId":"macbook","today":{"totalTokens":1}}'
-# 期望: 403（device_ownership_conflict）
+# 期望: 200
 ```
 
 第二个用户看不到第一个用户的设备：
 
 ```bash
 curl -s http://localhost:17322/api/stats -H "Authorization: Bearer $TOKEN2" | python3 -c "import sys,json;d=json.load(sys.stdin);print('devices:',len(d['devices']))"
-# 期望: devices: 0
+# 期望: devices: 1（仅自己的 macbook 记录）
 ```
 
 ### 7.10 删除设备

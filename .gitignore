@@ -25,3 +25,4 @@ worker/.dev.vars
 devlog/
 app/
 app-prototype/
+docs/BUILD-PACKAGING.md

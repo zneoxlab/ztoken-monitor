@@ -92,23 +92,13 @@ async function listDevicesByUser(pool, userId) {
   return rows.map(deserializeDevice);
 }
 
-// 取某用户的某设备（用于 ingest 时 merge 的 existing）
+// 取某用户的某设备（用于 ingest 时 merge 的 existing；按 user_id + device_id）
 async function getDevice(pool, userId, deviceId) {
   const [rows] = await pool.execute(
     'SELECT payload_json FROM devices WHERE user_id = :userId AND device_id = :deviceId LIMIT 1',
     { userId, deviceId }
   );
   return rows[0] ? deserializeDevice(rows[0]) : null;
-}
-
-// 查 device_id 的归属用户（不带 user_id 过滤，用于所有权检查）
-// 返回 userId 或 null（无主）
-async function getDeviceOwner(pool, deviceId) {
-  const [rows] = await pool.execute(
-    'SELECT user_id AS userId FROM devices WHERE device_id = :deviceId LIMIT 1',
-    { deviceId }
-  );
-  return rows[0] ? rows[0].userId : null;
 }
 
 // upsert：INSERT ... ON DUPLICATE KEY UPDATE（联合唯一键 user_id+device_id）
@@ -181,7 +171,6 @@ module.exports = {
   findUserById,
   listDevicesByUser,
   getDevice,
-  getDeviceOwner,
   upsertDevice,
   deleteDevice,
   countAllDevices,

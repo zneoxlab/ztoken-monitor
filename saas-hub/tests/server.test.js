@@ -172,15 +172,21 @@ test('多租户隔离：两用户互不可见', async () => {
   assert.equal(statsB.json.devices[0].deviceId, 'dev-b');
 });
 
-test('设备所有权冲突返回 403', async () => {
+test('不同用户同 deviceId 各自 ingest 成功', async () => {
   if (shouldSkip()) return;
   const regA = await call(baseUrl, 'POST', '/api/auth/register', { body: { email: `own_a_${Date.now()}@e.com`, password: 'password123' } });
   const regB = await call(baseUrl, 'POST', '/api/auth/register', { body: { email: `own_b_${Date.now()}@e.com`, password: 'password123' } });
   const sharedDevice = `shared-${Date.now()}`;
-  await call(baseUrl, 'POST', '/api/ingest', { token: regA.json.token, body: { deviceId: sharedDevice, today: { totalTokens: 1 } } });
-  const conflict = await call(baseUrl, 'POST', '/api/ingest', { token: regB.json.token, body: { deviceId: sharedDevice, today: { totalTokens: 2 } } });
-  assert.equal(conflict.status, 403);
-  assert.equal(conflict.json.error, 'device_ownership_conflict');
+  const ingestA = await call(baseUrl, 'POST', '/api/ingest', { token: regA.json.token, body: { deviceId: sharedDevice, today: { totalTokens: 1 } } });
+  const ingestB = await call(baseUrl, 'POST', '/api/ingest', { token: regB.json.token, body: { deviceId: sharedDevice, today: { totalTokens: 2 } } });
+  assert.equal(ingestA.status, 200);
+  assert.equal(ingestB.status, 200);
+  const statsA = await call(baseUrl, 'GET', '/api/stats', { token: regA.json.token });
+  const statsB = await call(baseUrl, 'GET', '/api/stats', { token: regB.json.token });
+  assert.equal(statsA.json.devices.length, 1);
+  assert.equal(statsA.json.devices[0].periods.today.totalTokens, 1);
+  assert.equal(statsB.json.devices.length, 1);
+  assert.equal(statsB.json.devices[0].periods.today.totalTokens, 2);
 });
 
 test('subscriptions PUT 乐观并发：stale_write 返回 409', async () => {

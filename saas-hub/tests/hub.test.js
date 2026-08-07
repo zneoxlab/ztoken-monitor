@@ -26,14 +26,6 @@ function createMockDb() {
     async getDevice(_, userId, deviceId) {
       return devices.get(`${userId}:${deviceId}`) || null;
     },
-    async getDeviceOwner(_, deviceId) {
-      for (const [key] of devices) {
-        if (key.endsWith(`:${deviceId}`)) {
-          return Number(key.split(':')[0]);
-        }
-      }
-      return null;
-    },
     async upsertDevice(_, userId, record) {
       devices.set(`${userId}:${record.deviceId}`, record);
     },
@@ -78,9 +70,8 @@ test('ingest 首次上报绑定 userId', async () => {
   const { hub, db } = setup();
   const { record } = await hub.ingest(1, { deviceId: 'dev-a', today: { totalTokens: 5, costUsd: 0.1 } });
   assert.equal(record.deviceId, 'dev-a');
-  // 设备已归属 user 1
-  const owner = await db.getDeviceOwner(null, 'dev-a');
-  assert.equal(owner, 1);
+  const stored = await db.getDevice(null, 1, 'dev-a');
+  assert.ok(stored);
 });
 
 test('ingest 同用户再次上报正常合并', async () => {
@@ -96,14 +87,15 @@ test('ingest 缺 deviceId 抛错', async () => {
   await assert.rejects(() => hub.ingest(1, { today: { totalTokens: 1 } }), /deviceId_required/);
 });
 
-test('ingest 设备归属他人时返回 403', async () => {
-  const { hub } = setup();
+test('ingest 不同用户同 deviceId 各自独立', async () => {
+  const { hub, db } = setup();
   await hub.ingest(1, { deviceId: 'shared-dev', today: { totalTokens: 1 } });
-  // user 2 尝试上报同一 deviceId
-  await assert.rejects(
-    () => hub.ingest(2, { deviceId: 'shared-dev', today: { totalTokens: 1 } }),
-    (err) => err.code === 'device_ownership_conflict'
-  );
+  const { record } = await hub.ingest(2, { deviceId: 'shared-dev', today: { totalTokens: 9 } });
+  assert.equal(record.periods.today.totalTokens, 9);
+  const user1 = await db.getDevice(null, 1, 'shared-dev');
+  const user2 = await db.getDevice(null, 2, 'shared-dev');
+  assert.equal(user1.periods.today.totalTokens, 1);
+  assert.equal(user2.periods.today.totalTokens, 9);
 });
 
 test('ingest 缺 limits 时沿用旧值（mergeDeviceRecord 复用）', async () => {

@@ -44,8 +44,7 @@ npm start                     # 默认监听 :17322
 ## 多租户隔离
 
 - 每条设备记录带 `user_id`，聚合时只算该用户的设备
-- 设备首次上报时，hub 从 JWT 解出 userId 自动绑定
-- 若 deviceId 已绑定到其他用户，再次上报返回 403 `device_ownership_conflict`
+- 设备首次上报时，hub 从 JWT 解出 userId 自动绑定；同一 `deviceId` 在不同用户下各自独立（按 `user_id + device_id` 查找与更新）
 - SSE 帧只推送给该用户自己的连接
 
 ## 测试

@@ -64,14 +64,6 @@ function createHub({ pool, db, sseRegistry, staleAfterMs }) {
     }
     const deviceId = String(payload.deviceId || payload.id);
 
-    // 所有权检查：deviceId 一旦绑定到某用户，其它用户无法绑定（403）
-    const ownerUserId = await dbApi.getDeviceOwner(pool, deviceId);
-    if (ownerUserId !== null && ownerUserId !== userId) {
-      const error = new Error('device belongs to another user');
-      error.code = 'device_ownership_conflict';
-      throw error;
-    }
-
     // 合并：incoming 缺 limits/history 时沿用旧值（mergeDeviceRecord 已处理）
     const existing = await dbApi.getDevice(pool, userId, deviceId);
     const record = stripSessionDetailFromRecord(
