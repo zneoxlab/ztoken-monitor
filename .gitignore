@@ -2,7 +2,6 @@ node_modules/
 data/
 build/
 dist/
-.idea/
 _site/
 .agents/
 .claude/
@@ -24,3 +23,5 @@ worker/.wrangler/
 worker/node_modules/
 worker/.dev.vars
 devlog/
+app/
+app-prototype/
