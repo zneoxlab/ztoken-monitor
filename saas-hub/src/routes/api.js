@@ -49,9 +49,17 @@ function createApiRoutes({ pool, hub, db, sseRegistry, sendJson }) {
     });
     const stats = await hub.getStats(req.userId);
     sseRegistry.sendSnapshot(res, stats);
-    const cleanup = sseRegistry.add(req.userId, res);
+    const unregister = sseRegistry.add(req.userId, res);
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      unregister();
+    };
     req.on('close', cleanup);
     req.on('error', cleanup);
+    res.on('close', cleanup);
+    return true;
   }
 
   // POST /api/ingest

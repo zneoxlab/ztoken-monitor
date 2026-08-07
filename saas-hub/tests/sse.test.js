@@ -107,6 +107,39 @@ test('sendSnapshot 发首帧', () => {
   }
 });
 
+test('broadcastStats 跳过已断开的连接', () => {
+  const registry = createSseRegistry();
+  try {
+    const live = mockRes();
+    const dead = mockRes();
+    dead.destroyed = true;
+    registry.add(1, live);
+    registry.add(1, dead);
+
+    registry.broadcastStats(1, { x: 1 }, 'ingest');
+
+    assert.ok(live.writtenText().includes('"x":1'));
+    assert.equal(registry.size(1), 1);
+  } finally {
+    registry.closeAll();
+  }
+});
+
+test('add 会清理同用户已断开的旧连接', () => {
+  const registry = createSseRegistry();
+  try {
+    const dead = mockRes();
+    dead.destroyed = true;
+    registry.add(1, dead);
+    assert.equal(registry.size(1), 1);
+
+    registry.add(1, mockRes());
+    assert.equal(registry.size(1), 1);
+  } finally {
+    registry.closeAll();
+  }
+});
+
 test('size 返回每用户连接数', () => {
   const registry = createSseRegistry();
   try {

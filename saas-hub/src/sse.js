@@ -13,6 +13,10 @@ function sseFormat(event, data) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+function isLive(res) {
+  return Boolean(res && !res.destroyed && !res.writableEnded);
+}
+
 function createSseRegistry() {
   // userId -> Set<res>
   const clientsByUser = new Map();
@@ -28,12 +32,29 @@ function createSseRegistry() {
     return set;
   }
 
+  function pruneDead(userId) {
+    const set = clientsByUser.get(userId);
+    if (!set) return;
+    for (const res of set) {
+      if (!isLive(res)) remove(userId, res);
+    }
+  }
+
   // 注册一个连接，返回 cleanup 函数
   function add(userId, res) {
+    pruneDead(userId);
     const set = getUserSet(userId);
     set.add(res);
     const heartbeat = setInterval(() => {
-      try { res.write(': hb\n\n'); } catch (_) { /* 连接已断，cleanup 会处理 */ }
+      if (!isLive(res)) {
+        remove(userId, res);
+        return;
+      }
+      try {
+        res.write(': hb\n\n');
+      } catch (_) {
+        remove(userId, res);
+      }
     }, SSE_HEARTBEAT_MS);
     meta.set(res, { userId, heartbeat });
     return () => remove(userId, res);
@@ -50,6 +71,9 @@ function createSseRegistry() {
       set.delete(res);
       if (set.size === 0) clientsByUser.delete(userId);
     }
+    if (isLive(res)) {
+      try { res.end(); } catch (_) {}
+    }
   }
 
   // 广播 stats 帧给某 userId 的所有连接（不同用户的帧互不可见）
@@ -57,8 +81,16 @@ function createSseRegistry() {
     const set = clientsByUser.get(userId);
     if (!set || set.size === 0) return;
     const payload = sseFormat('stats', { type: 'stats', reason, stats, at });
-    for (const res of set) {
-      try { res.write(payload); } catch (_) { remove(userId, res); }
+    for (const res of [...set]) {
+      if (!isLive(res)) {
+        remove(userId, res);
+        continue;
+      }
+      try {
+        res.write(payload);
+      } catch (_) {
+        remove(userId, res);
+      }
     }
   }
 

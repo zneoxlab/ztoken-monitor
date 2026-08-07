@@ -128,7 +128,7 @@ function sendAuthError(res, status, error, message) {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store'
   });
-  res.end(JSON.stringify({ error, message }, null, 2));
+  res.end(JSON.stringify({ error, message }));
 }
 
 // ---- 校验工具 ----

@@ -20,7 +20,7 @@ const { createApiRoutes } = require('./routes/api');
 function createSendJson(corsOrigin) {
   const accessControlOrigin = corsOrigin || '*';
   return function sendJson(res, statusCode, payload, extraHeaders = {}) {
-    const body = JSON.stringify(payload, null, 2);
+    const body = JSON.stringify(payload);
     res.writeHead(statusCode, {
       'access-control-allow-origin': accessControlOrigin,
       'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
@@ -30,6 +30,7 @@ function createSendJson(corsOrigin) {
       ...extraHeaders
     });
     res.end(body);
+    return true;
   };
 }
 
@@ -97,7 +98,7 @@ function createServer(config) {
         });
       });
       const handled = await apiRoutes.handle(req, res, url);
-      if (!handled) {
+      if (!handled && !res.headersSent) {
         return sendJson(res, 404, { error: 'not_found' });
       }
     } catch (error) {
