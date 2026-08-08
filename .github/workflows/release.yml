@@ -1,0 +1,155 @@
+name: Release
+
+# 推 v* tag 自动三平台构建并发布 GitHub Release。
+# 未签名构建:mac 首次打开需右键绕过 Gatekeeper,Win 首次有 SmartScreen 提示。
+# gitee remote 不支持 Actions,本工作流只在 github remote 生效。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {} # 允许手动触发,方便首次验证(失败不留半截 Release)
+
+# 同一时间同 tag 只跑一条,避免重复发布
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false # 单平台失败不连累其它平台,已成功的产物仍可留作排查
+      matrix:
+        include:
+          # mac arm64 —— Apple Silicon
+          - os: macos-15
+            target: mac-arm64
+            dist_script: dist:mac
+            artifact_name: zt-monitor-mac-arm64
+            artifact_path: |
+              dist/*.dmg
+              dist/*.zip
+              dist/latest-mac.yml
+              dist/*.blockmap
+          # mac x64 —— Intel,需与 arm64 分别构建,再由 release job 合并 updater 元数据
+          - os: macos-15-intel
+            target: mac-x64
+            dist_script: dist:mac:x64
+            artifact_name: zt-monitor-mac-x64
+            artifact_path: |
+              dist/*.dmg
+              dist/*.zip
+              dist/latest-mac.yml
+              dist/*.blockmap
+          # Windows x64 —— 一次出 nsis 安装版 + portable 便携版
+          - os: windows-latest
+            target: win
+            dist_script: dist:win
+            artifact_name: zt-monitor-win
+            artifact_path: |
+              dist/*.exe
+              dist/latest.yml
+              dist/*.blockmap
+          # Linux x64 —— AppImage
+          - os: ubuntu-latest
+            target: linux
+            dist_script: dist:linux
+            artifact_name: zt-monitor-linux
+            artifact_path: |
+              dist/*.AppImage
+              dist/latest-linux.yml
+              dist/*.blockmap
+    runs-on: ${{ matrix.os }}
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      # actions 均用上游已验证的 SHA pin + 版本注释,兼顾可读性与供应链安全
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Platform evidence
+        run: node -p "process.platform + '-' + process.arch"
+      - run: npm ci
+      # APPIMAGE_EXTRACT_AND_RUN: ubuntu runner 缺 libfuse2,appimagetool 无法直接挂载,
+      # 设此项让其在临时目录解压运行。仅对 Linux 生效,其它平台忽略。
+      - name: Build platform artifacts
+        run: npm run ${{ matrix.dist_script }}
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+      # 校验本平台 updater 元数据(latest*.yml)引用的产物名在 dist 里真实存在,
+      # 避免发布后 electron-updater 客户端按 url 拉包 404。
+      - name: Verify updater artifact names
+        run: npm run verify:release-artifact-names
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact_name }}
+          if-no-files-found: error
+          path: ${{ matrix.artifact_path }}
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+      # 只下载最终平台产物,内部名 zt-monitor-* 前缀精确命中,
+      # 不会误带任何签名中间产物(本 fork 无签名流程,纯粹沿用上游的安全命名习惯)
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          pattern: zt-monitor-*
+      - name: Stage release artifacts and merge mac updater metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-artifacts
+          # 汇聚除 latest-mac.yml 外的所有产物(待合并),遇重名立即报错防止覆盖
+          while IFS= read -r -d '' file; do
+            name=$(basename "$file")
+            if [ -e "release-artifacts/$name" ]; then
+              echo "duplicate release artifact: $name" >&2
+              exit 1
+            fi
+            cp "$file" "release-artifacts/$name"
+          done < <(find artifacts -mindepth 2 -type f ! -name 'latest-mac.yml' -print0)
+          # 合并 mac arm64 + x64 两份 latest-mac.yml 为单一多架构元数据:
+          # arm64 作 base(保留现有 Apple Silicon 安装的 path/sha512),x64 的 file 条目并入 files 列表,
+          # Intel 客户端经架构过滤拉到 x64 zip。
+          node scripts/merge-mac-updater-metadata.js \
+            release-artifacts/latest-mac.yml \
+            artifacts/zt-monitor-mac-arm64/latest-mac.yml \
+            artifacts/zt-monitor-mac-x64/latest-mac.yml
+          # 合并后整体再校验一次,确保最终发布的元数据与产物一致
+          node scripts/verify-updater-artifact-names.js release-artifacts
+      # 用 tag 版本号渲染 RELEASE_TEMPLATE.md 的下载链接占位符(__VERSION__),
+      # 这样模板永久有效,无需每次发版手改版本号。
+      - name: Render release notes
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          bare="${VERSION#v}"
+          sed "s/__VERSION__/${bare}/g" .github/RELEASE_TEMPLATE.md > RELEASE_BODY.md
+          echo "--- rendered RELEASE_BODY.md (first 40 lines) ---"
+          sed -n '1,40p' RELEASE_BODY.md
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          body_path: RELEASE_BODY.md
+          files: |
+            release-artifacts/*.dmg
+            release-artifacts/*.zip
+            release-artifacts/*.exe
+            release-artifacts/*.AppImage
+            release-artifacts/latest.yml
+            release-artifacts/latest-mac.yml
+            release-artifacts/latest-linux.yml
+            release-artifacts/*.blockmap

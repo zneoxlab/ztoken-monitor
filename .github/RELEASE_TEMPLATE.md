@@ -16,31 +16,31 @@
 
 ## Download
 
-- **macOS Apple Silicon** — [Token-Monitor-0.42.0-arm64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-arm64.dmg)
-- **macOS Intel** — [Token-Monitor-0.42.0-x64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-x64.dmg)
-- **Windows Installer** — [Token-Monitor-Setup-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-Setup-0.42.0.exe) (recommended)
-- **Windows Portable** — [Token-Monitor-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.exe) (no install required)
-- **Linux x64** — [Token-Monitor-0.42.0.AppImage](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.AppImage)
+- **macOS Apple Silicon** — [ZT-Monitor-__VERSION__-arm64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-arm64.dmg)
+- **macOS Intel** — [ZT-Monitor-__VERSION__-x64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-x64.dmg)
+- **Windows Installer** — [ZT-Monitor-Setup-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-Setup-__VERSION__.exe) (recommended)
+- **Windows Portable** — [ZT-Monitor-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.exe) (no install required)
+- **Linux x64** — [ZT-Monitor-__VERSION__.AppImage](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.AppImage)
 
 <details>
 <summary><strong>First launch and other notes</strong></summary>
 
 ### First launch
 
-**macOS:** the app is Developer ID-signed and notarized by Apple. Open the `.dmg`, then drag Token Monitor to Applications.
+**macOS:** the app is **not code-signed or notarized**. On first launch, right-click the app and choose **Open** → **Open anyway** to bypass Gatekeeper, then drag ZT Monitor to Applications.
 
-**Windows:** both executables are signed ([how to verify](https://github.com/Javis603/token-monitor/blob/main/docs/code-signing.md#verify-a-download)).
+**Windows:** the executables are **unsigned** — SmartScreen may show "Windows protected your PC". Click **More info** → **Run anyway**.
 
 **Linux:** mark the AppImage executable, then run it:
 
 ```bash
-chmod +x "Token Monitor"*.AppImage
-./"Token Monitor"*.AppImage
+chmod +x ZT-Monitor-*.AppImage
+./ZT-Monitor-*.AppImage
 ```
 
 ### Other notes
 
-Other platforms are not pre-built — run from source per the [README](https://github.com/Javis603/token-monitor#readme). The macOS `.zip` is the same app repackaged; ignore it unless you specifically need it.
+Other platforms are not pre-built — run from source per the [README](https://github.com/zneoxlab/ztoken-monitor#readme). The macOS `.zip` is the same app repackaged; ignore it unless you specifically need it.
 
 ### tokscale dependency
 
@@ -70,31 +70,31 @@ open-source: https://github.com/junhoyeo/tokscale
 
 ## 下载
 
-- **macOS Apple Silicon** — [Token-Monitor-0.42.0-arm64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-arm64.dmg)
-- **macOS Intel** — [Token-Monitor-0.42.0-x64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-x64.dmg)
-- **Windows 安装版** — [Token-Monitor-Setup-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-Setup-0.42.0.exe)（推荐）
-- **Windows 便携版** — [Token-Monitor-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.exe)（免安装）
-- **Linux x64** — [Token-Monitor-0.42.0.AppImage](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.AppImage)
+- **macOS Apple Silicon** — [ZT-Monitor-__VERSION__-arm64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-arm64.dmg)
+- **macOS Intel** — [ZT-Monitor-__VERSION__-x64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-x64.dmg)
+- **Windows 安装版** — [ZT-Monitor-Setup-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-Setup-__VERSION__.exe)（推荐）
+- **Windows 便携版** — [ZT-Monitor-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.exe)（免安装）
+- **Linux x64** — [ZT-Monitor-__VERSION__.AppImage](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.AppImage)
 
 <details>
 <summary><strong>首次启动与其他说明</strong></summary>
 
 ### 首次启动
 
-**macOS：** 应用已使用 Developer ID 签名并通过 Apple 公证。打开 `.dmg`，然后把 Token Monitor 拖到 Applications。
+**macOS：** 应用**未做代码签名与公证**。首次打开时请右键点击应用，选择「打开」→「打开」，绕过 Gatekeeper 后再把 ZT Monitor 拖到 Applications。
 
-**Windows：** 两个可执行文件均已签名（[查看验证方法](https://github.com/Javis603/token-monitor/blob/main/docs/code-signing.md#verify-a-download)）。
+**Windows：** 可执行文件**未签名**——首次运行时 SmartScreen 可能提示「Windows 已保护你的电脑」。点击「更多信息」→「仍要运行」。
 
 **Linux：** 先给 AppImage 执行权限，然后运行：
 
 ```bash
-chmod +x "Token Monitor"*.AppImage
-./"Token Monitor"*.AppImage
+chmod +x ZT-Monitor-*.AppImage
+./ZT-Monitor-*.AppImage
 ```
 
 ### 其他说明
 
-其他平台暂不提供预构建版本，请参考 [README](https://github.com/Javis603/token-monitor#readme) 从源码运行。macOS 的 `.zip` 只是同一个 app 的重新打包版本，除非你明确需要，否则可以忽略。
+其他平台暂不提供预构建版本，请参考 [README](https://github.com/zneoxlab/ztoken-monitor#readme) 从源码运行。macOS 的 `.zip` 只是同一个 app 的重新打包版本，除非你明确需要，否则可以忽略。
 
 ### tokscale 依赖
 
@@ -106,7 +106,7 @@ https://github.com/junhoyeo/tokscale
 
 ---
 
-**Full Changelog:** [v0.41.0...v0.42.0](https://github.com/Javis603/token-monitor/compare/v0.41.0...v0.42.0)
+**Full Changelog:** [releases](https://github.com/zneoxlab/ztoken-monitor/releases)
 
 <details>
 <summary>繁體中文 · 한국어 · 日本語</summary>
@@ -132,11 +132,11 @@ https://github.com/junhoyeo/tokscale
 
 ## 下載
 
-- **macOS Apple Silicon** — [Token-Monitor-0.42.0-arm64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-arm64.dmg)
-- **macOS Intel** — [Token-Monitor-0.42.0-x64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-x64.dmg)
-- **Windows 安裝版** — [Token-Monitor-Setup-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-Setup-0.42.0.exe)（推薦）
-- **Windows 便攜版** — [Token-Monitor-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.exe)（免安裝）
-- **Linux x64** — [Token-Monitor-0.42.0.AppImage](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.AppImage)
+- **macOS Apple Silicon** — [ZT-Monitor-__VERSION__-arm64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-arm64.dmg)
+- **macOS Intel** — [ZT-Monitor-__VERSION__-x64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-x64.dmg)
+- **Windows 安裝版** — [ZT-Monitor-Setup-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-Setup-__VERSION__.exe)（推薦）
+- **Windows 便攜版** — [ZT-Monitor-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.exe)（免安裝）
+- **Linux x64** — [ZT-Monitor-__VERSION__.AppImage](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.AppImage)
 
 </details>
 
@@ -161,11 +161,11 @@ https://github.com/junhoyeo/tokscale
 
 ## 다운로드
 
-- **macOS Apple Silicon** — [Token-Monitor-0.42.0-arm64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-arm64.dmg)
-- **macOS Intel** — [Token-Monitor-0.42.0-x64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-x64.dmg)
-- **Windows 설치 버전** — [Token-Monitor-Setup-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-Setup-0.42.0.exe) (권장)
-- **Windows 포터블 버전** — [Token-Monitor-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.exe) (설치 필요 없음)
-- **Linux x64** — [Token-Monitor-0.42.0.AppImage](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.AppImage)
+- **macOS Apple Silicon** — [ZT-Monitor-__VERSION__-arm64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-arm64.dmg)
+- **macOS Intel** — [ZT-Monitor-__VERSION__-x64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-x64.dmg)
+- **Windows 설치 버전** — [ZT-Monitor-Setup-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-Setup-__VERSION__.exe) (권장)
+- **Windows 포터블 버전** — [ZT-Monitor-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.exe) (설치 필요 없음)
+- **Linux x64** — [ZT-Monitor-__VERSION__.AppImage](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.AppImage)
 
 </details>
 
@@ -190,11 +190,11 @@ https://github.com/junhoyeo/tokscale
 
 ## ダウンロード
 
-- **macOS Apple Silicon** — [Token-Monitor-0.42.0-arm64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-arm64.dmg)
-- **macOS Intel** — [Token-Monitor-0.42.0-x64.dmg](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0-x64.dmg)
-- **Windows インストーラー** — [Token-Monitor-Setup-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-Setup-0.42.0.exe)（推奨）
-- **Windows ポータブル版** — [Token-Monitor-0.42.0.exe](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.exe)（インストール不要）
-- **Linux x64** — [Token-Monitor-0.42.0.AppImage](https://github.com/Javis603/token-monitor/releases/download/v0.42.0/Token-Monitor-0.42.0.AppImage)
+- **macOS Apple Silicon** — [ZT-Monitor-__VERSION__-arm64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-arm64.dmg)
+- **macOS Intel** — [ZT-Monitor-__VERSION__-x64.dmg](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__-x64.dmg)
+- **Windows インストーラー** — [ZT-Monitor-Setup-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-Setup-__VERSION__.exe)（推奨）
+- **Windows ポータブル版** — [ZT-Monitor-__VERSION__.exe](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.exe)（インストール不要）
+- **Linux x64** — [ZT-Monitor-__VERSION__.AppImage](https://github.com/zneoxlab/ztoken-monitor/releases/download/v__VERSION__/ZT-Monitor-__VERSION__.AppImage)
 
 </details>
 
