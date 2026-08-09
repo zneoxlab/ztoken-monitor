@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1018">
+  <meta name="description" content="ZT Monitor 是面向 AI 编程工具的用量、成本与额度监控平台。覆盖 28+ 工具与提供方，支持实时追踪、会话明细、趋势热力图和多设备同步。">
+  <title>ZT Monitor — 你的 AI 用量，桌面与手机随时掌握</title>
+  <link rel="icon" href="../assets/app.png">
+  <link rel="preload" href="./assets/screenshots/desktop-trends.png" as="image">
+  <link rel="preload" href="./assets/screenshots/mobile-overview.jpg" as="image">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <div class="ambient" aria-hidden="true">
+    <span></span><span></span><span></span>
+  </div>
+
+  <div class="page-top-anchor" id="top" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="nav-shell">
+      <a class="brand" href="#top" aria-label="ZT Monitor 首页">
+        <img src="../assets/app.png" width="32" height="32" alt="">
+        <span>ZT Monitor</span>
+      </a>
+
+      <nav class="nav-links" aria-label="主导航">
+        <a href="#features" data-zh="核心功能" data-en="Features">核心功能</a>
+        <a href="#workflow" data-zh="多设备同步" data-en="Multi-device">多设备同步</a>
+        <a href="#download" data-zh="下载" data-en="Download">下载</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="language-button" id="languageButton" type="button" aria-label="切换为英文">EN</button>
+        <a class="github-link" href="https://github.com/zneoxlab/ztoken-monitor" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-download" href="#download" data-zh="获取 ZT Monitor" data-en="Get ZT Monitor">获取 ZT Monitor</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero section-shell" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="availability-pill">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span data-zh="28+ AI 工具的用量与额度监控" data-en="Usage and limits for 28+ AI tools">28+ AI 工具的用量与额度监控</span>
+        </div>
+
+        <h1 id="hero-title">
+          <span data-zh="你的 AI 用量，" data-en="Your AI usage,">你的 AI 用量，</span>
+          <strong data-zh="桌面与手机随时掌握。" data-en="clear on every screen.">桌面与手机随时掌握。</strong>
+        </h1>
+
+        <p class="hero-lead" data-zh="ZT Monitor 自动汇总 Claude Code、Codex、Cursor、GitHub Copilot 等工具的 Token、成本、缓存命中与账户额度。电脑端实时采集，手机端随时查看。" data-en="ZT Monitor brings tokens, cost, cache hits, and account limits from Claude Code, Codex, Cursor, GitHub Copilot, and more into one live view. Desktop collects; mobile keeps it close.">
+          ZT Monitor 自动汇总 Claude Code、Codex、Cursor、GitHub Copilot 等工具的 Token、成本、缓存命中与账户额度。电脑端实时采集，手机端随时查看。
+        </p>
+
+        <div class="hero-signals" aria-label="核心产品能力">
+          <span data-zh="实时用量与成本" data-en="Live usage &amp; cost">实时用量与成本</span>
+          <span data-zh="账户额度预警" data-en="Account limit alerts">账户额度预警</span>
+          <span data-zh="多设备同步" data-en="Multi-device sync">多设备同步</span>
+        </div>
+
+        <div class="hero-actions">
+          <a class="smart-download primary-button" id="heroDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener">
+            <span class="button-platform-icon" id="heroPlatformIcon" aria-hidden="true"></span>
+            <span>
+              <b id="heroDownloadLabel">获取最新版本</b>
+              <small id="heroDownloadMeta">正在识别当前设备</small>
+            </span>
+          </a>
+          <a class="secondary-button" href="https://github.com/zneoxlab/ztoken-monitor" target="_blank" rel="noopener">
+            <img class="github-mark" src="https://cdn.simpleicons.org/github/FFFFFF" alt="" aria-hidden="true">
+            <span data-zh="查看 GitHub" data-en="View on GitHub">查看 GitHub</span>
+          </a>
+        </div>
+
+        <div class="platform-proof" aria-label="支持平台">
+          <a class="proof-item" href="#download"><img src="../assets/icons/os-apple.svg" alt=""><span><strong>macOS</strong><small data-zh="下载" data-en="Download">下载</small></span></a>
+          <a class="proof-item" href="#download"><img src="../assets/icons/os-windows.svg" alt=""><span><strong>Windows</strong><small data-zh="下载" data-en="Download">下载</small></span></a>
+          <a class="proof-item" href="#download"><img src="../assets/icons/os-linux.svg" alt=""><span><strong>Linux</strong><small data-zh="下载" data-en="Download">下载</small></span></a>
+
+          <div class="proof-item beta beta-card hero-beta">
+            <button class="beta-trigger proof-beta-trigger" type="button" aria-expanded="false" aria-controls="heroAndroidQr" data-beta="android" aria-describedby="heroAndroidHint">
+              <img src="https://cdn.simpleicons.org/android/3DDC84" alt="">
+              <span><strong>Android</strong><small data-zh="内测 · 扫码下载" data-en="Beta · scan to download">内测 · 扫码下载</small></span>
+            </button>
+            <div class="qr-popover hero-qr dual-qr-popover" id="heroAndroidQr" role="dialog" aria-label="Android 内测下载与社群二维码">
+              <div class="qr-grid">
+                <div class="qr-choice">
+                  <img id="heroAndroidQrImage" width="152" height="152" alt="Android 内测安装包下载二维码">
+                  <strong data-zh="扫码下载 Android 内测版" data-en="Scan to download Android beta">扫码下载 Android 内测版</strong>
+                  <span id="heroAndroidHint" data-zh="固定路径：downloads/ZT-Monitor-Android.apk" data-en="Fixed path: downloads/ZT-Monitor-Android.apk">固定路径：downloads/ZT-Monitor-Android.apk</span>
+                </div>
+                <div class="qr-choice">
+                  <img class="community-qr-image" data-community-qr src="./assets/contact-community.png" width="152" height="152" alt="ZT Monitor 内测社群联系二维码">
+                  <strong data-zh="扫码进入内测社群" data-en="Scan to join the beta community">扫码进入内测社群</strong>
+                  <span data-zh="添加时请备注：zt monitor" data-en="Please add the note: zt monitor">添加时请备注：zt monitor</span>
+                </div>
+              </div>
+              <a id="heroAndroidBetaLink" href="./downloads/ZT-Monitor-Android.apk" download="ZT-Monitor-Android.apk" data-zh="无法扫码？直接下载安装包" data-en="Can't scan? Download the APK">无法扫码？直接下载安装包</a>
+            </div>
+          </div>
+
+          <div class="proof-item beta beta-card hero-beta">
+            <button class="beta-trigger proof-beta-trigger" type="button" aria-expanded="false" aria-controls="heroHarmonyQr" data-beta="harmony" aria-describedby="heroHarmonyHint">
+              <img src="https://cdn.simpleicons.org/harmonyos/FFFFFF" alt="">
+              <span><strong>HarmonyOS</strong><small data-zh="内测 · 扫码参加" data-en="Beta · scan to join">内测 · 扫码参加</small></span>
+            </button>
+            <div class="qr-popover hero-qr community-only-popover" id="heroHarmonyQr" role="dialog" aria-label="HarmonyOS 内测社群二维码">
+              <img id="heroHarmonyQrImage" class="community-qr-image" data-community-qr src="./assets/contact-community.png" width="184" height="184" alt="ZT Monitor 内测社群联系二维码">
+              <strong data-zh="扫码参与 HarmonyOS 内测" data-en="Scan to join the HarmonyOS beta">扫码参与 HarmonyOS 内测</strong>
+              <span id="heroHarmonyHint" data-zh="添加时请备注：zt monitor，我们会邀请你进入内测社群" data-en="Please add the note: zt monitor, and we'll invite you to the beta community">添加时请备注：zt monitor，我们会邀请你进入内测社群</span>
+              <a id="heroHarmonyBetaLink" href="./assets/contact-community.png" download="zt-monitor-community-qr.png" data-zh="保存联系二维码" data-en="Save contact QR code">保存联系二维码</a>
+            </div>
+          </div>
+
+          <span class="proof-item planned-proof"><img src="../assets/icons/os-apple.svg" alt=""><span><strong>iOS</strong><small data-zh="后续推出" data-en="Coming later">后续推出</small></span></span>
+        </div>
+      </div>
+
+      <div class="showcase" id="product" aria-roledescription="轮播图" aria-label="电脑端和手机端产品展示">
+        <div class="showcase-head">
+          <div>
+            <span class="showcase-kicker" data-zh="真实产品界面" data-en="Real product interface">真实产品界面</span>
+            <strong id="showcaseTitle">电脑端 · 实时采集与分析</strong>
+          </div>
+          <div class="showcase-tabs" role="tablist" aria-label="切换产品界面">
+            <button class="showcase-tab is-active" type="button" role="tab" aria-selected="true" data-slide="0" data-zh="电脑端" data-en="Desktop">电脑端</button>
+            <button class="showcase-tab" type="button" role="tab" aria-selected="false" data-slide="1" data-zh="手机端" data-en="Mobile">手机端</button>
+          </div>
+        </div>
+
+        <div class="showcase-stage" aria-live="polite">
+          <article class="showcase-slide desktop-slide is-active" aria-label="ZT Monitor 电脑端界面">
+            <div class="scene-glow" aria-hidden="true"></div>
+            <div class="desktop-real-scene">
+              <img class="dashboard-image" src="./assets/screenshots/desktop-trends.png" alt="ZT Monitor 电脑端使用仪表板，展示 Token、成本、热力图、模型与工具分布">
+              <img class="widget-image" src="./assets/screenshots/desktop-home.png" alt="ZT Monitor 电脑端悬浮组件，展示实时 Token、账户额度、模型与活动">
+            </div>
+          </article>
+
+          <article class="showcase-slide mobile-slide" aria-label="ZT Monitor 手机端界面">
+            <div class="mobile-capture-scene">
+              <div class="mobile-shot-deck" aria-label="手机端真实界面轮播">
+                <figure class="mobile-capture is-active" data-mobile-shot="0">
+                  <img src="./assets/screenshots/mobile-overview.jpg" alt="ZT Monitor 手机端总览，展示本月 Token、成本、额度和活动热力图">
+                  <figcaption data-zh="总览" data-en="Overview">总览</figcaption>
+                </figure>
+                <figure class="mobile-capture" data-mobile-shot="1">
+                  <img src="./assets/screenshots/mobile-tools.jpg" alt="ZT Monitor 手机端工具明细，展示 Cursor、Workbuddy 和 Claude 用量">
+                  <figcaption data-zh="工具明细" data-en="Tool details">工具明细</figcaption>
+                </figure>
+                <figure class="mobile-capture" data-mobile-shot="2">
+                  <img src="./assets/screenshots/mobile-limits.jpg" alt="ZT Monitor 手机端账户配额，展示 Codex、Cursor、Claude 等额度">
+                  <figcaption data-zh="账户配额" data-en="Limits">账户配额</figcaption>
+                </figure>
+                <figure class="mobile-capture" data-mobile-shot="3">
+                  <img src="./assets/screenshots/mobile-devices.jpg" alt="ZT Monitor 手机端设备页，展示电脑同步状态与聚合用量">
+                  <figcaption data-zh="设备同步" data-en="Devices">设备同步</figcaption>
+                </figure>
+              </div>
+              <div class="mobile-capture-copy">
+                <span data-zh="Android / HarmonyOS 内测" data-en="Android / HarmonyOS beta">Android / HarmonyOS 内测</span>
+                <strong data-zh="离开电脑，也能看清用量与剩余额度" data-en="Stay on top of usage and limits away from your desk">离开电脑，也能看清用量与剩余额度</strong>
+                <p data-zh="手机端只查看你授权同步的聚合数据，不读取手机里的 AI 账号、提示词或日志。" data-en="Mobile only reads the aggregate data you choose to sync. It never reads AI accounts, prompts, or logs from your phone.">手机端只查看你授权同步的聚合数据，不读取手机里的 AI 账号、提示词或日志。</p>
+                <div class="mobile-shot-nav" role="tablist" aria-label="切换手机端界面">
+                  <button class="is-active" type="button" role="tab" aria-selected="true" data-mobile-index="0" data-zh="总览" data-en="Overview">总览</button>
+                  <button type="button" role="tab" aria-selected="false" data-mobile-index="1" data-zh="明细" data-en="Details">明细</button>
+                  <button type="button" role="tab" aria-selected="false" data-mobile-index="2" data-zh="配额" data-en="Limits">配额</button>
+                  <button type="button" role="tab" aria-selected="false" data-mobile-index="3" data-zh="设备" data-en="Devices">设备</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="showcase-foot">
+          <button class="carousel-dot is-active" type="button" data-slide="0" aria-label="显示电脑端" aria-current="true"></button>
+          <button class="carousel-dot" type="button" data-slide="1" aria-label="显示手机端" aria-current="false"></button>
+          <span data-zh="真实产品截图 · 自动切换焦点" data-en="Real product captures · focus rotates automatically">真实产品截图 · 自动切换焦点</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof-strip" aria-label="产品能力摘要">
+      <div class="proof-shell section-shell">
+        <div><strong>28+</strong><span data-zh="工具与额度提供方" data-en="Tools and limit providers">工具与额度提供方</span></div>
+        <div><strong>3–5s</strong><span data-zh="本地日志变化后更新" data-en="Update after local log change">本地日志变化后更新</span></div>
+        <div><strong>370 天</strong><span data-zh="热力图与同步窗口" data-en="Heatmap and sync window">热力图与同步窗口</span></div>
+        <div><strong>Local-first</strong><span data-zh="提示词与源码不上传" data-en="Prompts and code stay local">提示词与源码不上传</span></div>
+      </div>
+    </section>
+
+    <section class="core-features section-shell" id="features" aria-labelledby="features-title">
+      <div class="section-heading feature-heading">
+        <span class="section-eyebrow" data-zh="核心功能" data-en="Core features">核心功能</span>
+        <h2 id="features-title" data-zh="不只是看一个 Token 数字。" data-en="Far more than a token counter.">不只是看一个 Token 数字。</h2>
+        <p data-zh="ZT Monitor 把实时用量、真实成本、账户额度、历史趋势和多设备状态放在同一套视图里。从今天用了多少，到哪次会话最贵，都能继续往下看。" data-en="ZT Monitor puts live usage, real cost, account limits, historical trends, and device status into one system—from today's total down to the most expensive session.">ZT Monitor 把实时用量、真实成本、账户额度、历史趋势和多设备状态放在同一套视图里。从今天用了多少，到哪次会话最贵，都能继续往下看。</p>
+      </div>
+
+      <article class="feature-lead-card">
+        <div class="feature-copy">
+          <span class="feature-number">01 / LIVE OVERVIEW</span>
+          <h3 data-zh="实时用量、成本与额度，一屏看全" data-en="Live usage, cost, and limits in one view">实时用量、成本与额度，一屏看全</h3>
+          <p data-zh="每轮对话后数秒刷新。今日、本月、累计 Token 与美元成本，Claude、Codex、Cursor 等账户的 session／周／月额度，以及设备活跃状态都在首页直接呈现。" data-en="Refreshes within seconds after each turn. See daily, monthly, and all-time tokens and cost, provider limit windows, and device activity directly on Home.">每轮对话后数秒刷新。今日、本月、累计 Token 与美元成本，Claude、Codex、Cursor 等账户的 session／周／月额度，以及设备活跃状态都在首页直接呈现。</p>
+          <ul class="feature-checks">
+            <li data-zh="Token、成本、缓存命中率" data-en="Tokens, cost, and cache-hit rate">Token、成本、缓存命中率</li>
+            <li data-zh="18+ 提供方额度与余额" data-en="Limits and balances across 18+ providers">18+ 提供方额度与余额</li>
+            <li data-zh="多账号并列与 Codex 一键切换" data-en="Multiple accounts and one-click Codex switching">多账号并列与 Codex 一键切换</li>
+          </ul>
+        </div>
+        <div class="feature-phone-stack" aria-label="ZT Monitor 首页和额度界面">
+          <figure class="feature-shot home-shot"><img src="./assets/screenshots/desktop-home.png" alt="ZT Monitor 电脑端首页，展示 Token、成本、额度、模型和活动"><figcaption data-zh="实时总览" data-en="Live overview">实时总览</figcaption></figure>
+          <figure class="feature-shot limits-shot"><img src="./assets/screenshots/desktop-limits.png" alt="ZT Monitor 电脑端额度页，展示 Codex、OpenCode、Cursor 等账户额度"><figcaption data-zh="账户额度" data-en="Limits">账户额度</figcaption></figure>
+        </div>
+      </article>
+
+      <div class="feature-grid">
+        <article class="feature-card feature-breakdown">
+          <div class="feature-card-copy">
+            <span class="feature-number">02 / BREAKDOWN</span>
+            <h3 data-zh="按工具、模型、会话和项目继续钻取" data-en="Drill down by tool, model, session, and project">按工具、模型、会话和项目继续钻取</h3>
+            <p data-zh="先看哪个工具花得最多，再进入模型、session 或项目。支持展开单次回复的输入、输出、缓存、推理 Token 与工具调用，定位成本不再靠猜。" data-en="Start with the most expensive tool, then drill into models, sessions, or projects. Expand individual replies for input, output, cache, reasoning tokens, and tool calls.">先看哪个工具花得最多，再进入模型、session 或项目。支持展开单次回复的输入、输出、缓存、推理 Token 与工具调用，定位成本不再靠猜。</p>
+          </div>
+          <div class="breakdown-gallery">
+            <img src="./assets/screenshots/desktop-tools.png" alt="按 AI 工具拆分用量">
+            <img src="./assets/screenshots/desktop-models.png" alt="按模型拆分用量">
+            <img src="./assets/screenshots/desktop-sessions.png" alt="按会话拆分用量">
+          </div>
+        </article>
+
+        <article class="feature-card feature-trends">
+          <div class="feature-card-copy">
+            <span class="feature-number">03 / HISTORY</span>
+            <h3 data-zh="趋势、热力图与连续活跃天数" data-en="Trends, heatmaps, and active streaks">趋势、热力图与连续活跃天数</h3>
+            <p data-zh="按 7 天、30 天、90 天或全年查看；支持按工具或模型堆叠，并在柱状图与 K 线之间切换。" data-en="Review 7 days, 30 days, 90 days, or a full year; stack by tool or model and switch between bars and K-line.">按 7 天、30 天、90 天或全年查看；支持按工具或模型堆叠，并在柱状图与 K 线之间切换。</p>
+          </div>
+          <img class="trend-shot" src="./assets/screenshots/desktop-trends.png" alt="ZT Monitor 真实历史用量仪表板，展示年度活动、模型和工具分布">
+        </article>
+
+        <article class="feature-card feature-session">
+          <div class="feature-card-copy">
+            <span class="feature-number">04 / SESSION</span>
+            <h3 data-zh="看清每次对话到底花在哪里" data-en="See exactly where each conversation spends tokens">看清每次对话到底花在哪里</h3>
+            <p data-zh="Claude Code、Codex、OpenCode 支持 session 排名与明细。按消息数、模型、Token 和成本快速找到最重的一次对话；明细始终只在本机读取。" data-en="Rank sessions across Claude Code, Codex, and OpenCode by messages, model, tokens, and cost. Detailed transcripts are read only on-device.">Claude Code、Codex、OpenCode 支持 session 排名与明细。按消息数、模型、Token 和成本快速找到最重的一次对话；明细始终只在本机读取。</p>
+          </div>
+          <img class="session-shot" src="./assets/screenshots/desktop-sessions.png" alt="ZT Monitor 会话列表，展示模型、消息数、Token 与成本">
+        </article>
+
+        <article class="feature-card feature-devices">
+          <div class="feature-card-copy">
+            <span class="feature-number">05 / MULTI-DEVICE</span>
+            <h3 data-zh="多台电脑汇总，手机实时跟进" data-en="Aggregate every computer, follow live on mobile">多台电脑汇总，手机实时跟进</h3>
+            <p data-zh="macOS、Windows、Linux 与无界面 Agent 都能上报聚合数据。SSE 把一台设备的变化在数秒内推送到其他桌面端，以及 Android／HarmonyOS 查看端。" data-en="macOS, Windows, Linux, and headless agents can report aggregated data. SSE pushes device changes to other desktops and Android/HarmonyOS companions within seconds.">macOS、Windows、Linux 与无界面 Agent 都能上报聚合数据。SSE 把一台设备的变化在数秒内推送到其他桌面端，以及 Android／HarmonyOS 查看端。</p>
+          </div>
+          <img class="devices-shot" src="./assets/screenshots/desktop-devices.png" alt="ZT Monitor 多设备用量汇总视图，展示设备状态、工具与模型分布">
+        </article>
+
+        <article class="feature-card feature-privacy">
+          <img class="hub-shot" src="./assets/screenshots/desktop-hub.png" alt="ZT Monitor 多设备同步设置，支持仅限本机、连接 Hub、自托管 Hub 与云 Hub">
+          <div class="feature-card-copy">
+            <span class="feature-number">06 / LOCAL-FIRST</span>
+            <h3 data-zh="本地优先，隐私边界明确" data-en="Local-first with a clear privacy boundary">本地优先，隐私边界明确</h3>
+            <p data-zh="单机使用不需要服务器。提示词、回复、源代码和文件内容始终留在设备上；开启同步时只传聚合后的用量、成本、额度与设备状态。Hub 可以托管在自己的电脑、Node 服务或 Cloudflare Worker。" data-en="A single device needs no server. Prompts, replies, source code, and file content stay on-device; sync sends only aggregated usage, cost, limits, and device status. Host the Hub on your own machine, Node service, or Cloudflare Worker.">单机使用不需要服务器。提示词、回复、源代码和文件内容始终留在设备上；开启同步时只传聚合后的用量、成本、额度与设备状态。Hub 可以托管在自己的电脑、Node 服务或 Cloudflare Worker。</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="tool-coverage" aria-label="部分已支持工具">
+        <div>
+          <span class="section-eyebrow" data-zh="广泛兼容" data-en="Broad coverage">广泛兼容</span>
+          <h3 data-zh="你常用的 AI 编程工具，基本都在这里。" data-en="The AI coding tools you use are already here.">你常用的 AI 编程工具，基本都在这里。</h3>
+        </div>
+        <div class="tool-logo-cloud">
+          <span><img src="../assets/tools-icon/claude.png" alt="">Claude Code</span>
+          <span><img src="../assets/tools-icon/codex.png" alt="">Codex</span>
+          <span><img src="../assets/tools-icon/cursor.png" alt="">Cursor</span>
+          <span><img src="../assets/tools-icon/copilot.png" alt="">Copilot</span>
+          <span><img src="../assets/tools-icon/opencode.png" alt="">OpenCode</span>
+          <span><img src="../assets/tools-icon/antigravity.png" alt="">Antigravity</span>
+          <span><img src="../assets/tools-icon/kimi.png" alt="">Kimi</span>
+          <span><img src="../assets/tools-icon/qwen.png" alt="">Qwen</span>
+          <span class="more-tools">+20</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="story section-shell" id="workflow" aria-labelledby="workflow-title">
+      <div class="section-heading">
+        <span class="section-eyebrow" data-zh="多设备同步" data-en="Multi-device sync">多设备同步</span>
+        <h2 id="workflow-title" data-zh="电脑负责采集，手机负责随时查看。" data-en="Desktop collects. Mobile keeps you informed.">电脑负责采集，手机负责随时查看。</h2>
+        <p data-zh="手机端不是缩小版桌面，也不会读取手机里的 AI 账号或日志。它只接收你授权同步的聚合数据，为离开工位后的快速查看重新组织信息。" data-en="Mobile is not a shrunken desktop and does not read AI accounts or logs on the phone. It only receives the aggregated data you choose to sync, optimized for quick checks away from your desk.">手机端不是缩小版桌面，也不会读取手机里的 AI 账号或日志。它只接收你授权同步的聚合数据，为离开工位后的快速查看重新组织信息。</p>
+      </div>
+
+      <div class="workflow-line" aria-label="数据流">
+        <article><span>01</span><strong data-zh="桌面本地采集" data-en="Collect locally">桌面本地采集</strong><p data-zh="读取本机 AI 工具使用日志，3–5 秒刷新用量；提示词、回复与源码不离开设备。" data-en="Read local AI tool logs and refresh usage in 3–5 seconds; prompts, replies, and code never leave the device.">读取本机 AI 工具使用日志，3–5 秒刷新用量；提示词、回复与源码不离开设备。</p></article>
+        <i aria-hidden="true"></i>
+        <article><span>02</span><strong data-zh="Hub 聚合推送" data-en="Aggregate through Hub">Hub 聚合推送</strong><p data-zh="可选连接自建 Hub，只同步用量、成本、额度与设备状态，并通过 SSE 实时推送。" data-en="Optionally connect a self-hosted Hub; sync only usage, cost, limits, and device status over SSE.">可选连接自建 Hub，只同步用量、成本、额度与设备状态，并通过 SSE 实时推送。</p></article>
+        <i aria-hidden="true"></i>
+        <article><span>03</span><strong data-zh="跨端随时查看" data-en="Check on every screen">跨端随时查看</strong><p data-zh="其他电脑与 Android／HarmonyOS 内测版同步看到最新汇总；iOS 后续推出。" data-en="Other desktops and Android/HarmonyOS betas see the latest totals; iOS will follow later.">其他电脑与 Android／HarmonyOS 内测版同步看到最新汇总；iOS 后续推出。</p></article>
+      </div>
+    </section>
+
+    <section class="download-section" id="download" aria-labelledby="download-title">
+      <div class="download-shell section-shell">
+        <div class="download-intro">
+          <span class="section-eyebrow" data-zh="下载与内测" data-en="Download &amp; beta">下载与内测</span>
+          <h2 id="download-title" data-zh="从最适合当前设备的版本开始。" data-en="Start with the right version for this device.">从最适合当前设备的版本开始。</h2>
+          <p data-zh="桌面安装包自动读取 GitHub 最新 Release。Android 内测版可扫码直接下载；鸿蒙扫码联系加入内测社群；iOS App 后续推出。" data-en="Desktop builds resolve from the latest GitHub Release. Scan to download the Android beta directly, or contact us to join the HarmonyOS beta community. iOS will follow later.">桌面安装包自动读取 GitHub 最新 Release。Android 内测版可扫码直接下载；鸿蒙扫码联系加入内测社群；iOS App 后续推出。</p>
+          <a class="smart-download primary-button large" id="sectionDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener">
+            <span class="button-platform-icon" id="sectionPlatformIcon" aria-hidden="true"></span>
+            <span><b id="sectionDownloadLabel">获取最新版本</b><small id="sectionDownloadMeta">正在识别当前设备</small></span>
+          </a>
+          <p class="release-note"><span id="releaseStatus">最新稳定版</span> · <a href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener" data-zh="查看更新日志" data-en="View release notes">查看更新日志</a></p>
+        </div>
+
+        <div class="platform-list" aria-label="所有平台版本">
+          <article class="platform-card stable" data-platform-card="mac">
+            <div class="platform-card-icon"><img src="../assets/icons/os-apple.svg" alt="Apple"></div>
+            <div class="platform-card-copy"><span class="state stable-state" data-zh="正式版" data-en="Stable">正式版</span><h3>macOS</h3><p>Apple Silicon / Intel</p></div>
+            <div class="platform-links"><a id="macArmDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener">Apple Silicon</a><a id="macIntelDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener">Intel</a></div>
+          </article>
+
+          <article class="platform-card stable" data-platform-card="windows">
+            <div class="platform-card-icon"><img src="../assets/icons/os-windows.svg" alt="Windows"></div>
+            <div class="platform-card-copy"><span class="state stable-state" data-zh="正式版" data-en="Stable">正式版</span><h3>Windows</h3><p>Windows 10+ · x64</p></div>
+            <div class="platform-links"><a id="windowsDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener" data-zh="下载安装版" data-en="Installer">下载安装版</a><a id="windowsPortableDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener" data-zh="便携版" data-en="Portable">便携版</a></div>
+          </article>
+
+          <article class="platform-card beta-card" data-platform-card="android" tabindex="0" aria-describedby="androidBetaHint">
+            <div class="platform-card-icon"><img src="https://cdn.simpleicons.org/android/3DDC84" alt="Android"></div>
+            <div class="platform-card-copy"><span class="state beta-state" data-zh="内测中" data-en="Beta">内测中</span><h3>Android</h3><p data-zh="扫码直接下载安装包" data-en="Scan to download the APK directly">扫码直接下载安装包</p></div>
+            <button class="beta-trigger" type="button" aria-expanded="false" aria-controls="androidQr" data-beta="android" data-zh="扫码下载" data-en="Scan to download">扫码下载</button>
+            <div class="qr-popover dual-qr-popover" id="androidQr" role="dialog" aria-label="Android 内测下载与社群二维码">
+              <div class="qr-grid">
+                <div class="qr-choice">
+                  <img id="androidQrImage" width="152" height="152" alt="Android 内测安装包下载二维码">
+                  <strong data-zh="扫码下载 Android 内测版" data-en="Scan to download Android beta">扫码下载 Android 内测版</strong>
+                  <span id="androidBetaHint" data-zh="固定路径：downloads/ZT-Monitor-Android.apk" data-en="Fixed path: downloads/ZT-Monitor-Android.apk">固定路径：downloads/ZT-Monitor-Android.apk</span>
+                </div>
+                <div class="qr-choice">
+                  <img class="community-qr-image" data-community-qr src="./assets/contact-community.png" width="152" height="152" alt="ZT Monitor 内测社群联系二维码">
+                  <strong data-zh="扫码进入内测社群" data-en="Scan to join the beta community">扫码进入内测社群</strong>
+                  <span data-zh="添加时请备注：zt monitor" data-en="Please add the note: zt monitor">添加时请备注：zt monitor</span>
+                </div>
+              </div>
+              <a id="androidBetaLink" href="./downloads/ZT-Monitor-Android.apk" download="ZT-Monitor-Android.apk" data-zh="无法扫码？直接下载安装包" data-en="Can't scan? Download the APK">无法扫码？直接下载安装包</a>
+            </div>
+          </article>
+
+          <article class="platform-card beta-card" data-platform-card="harmony" tabindex="0" aria-describedby="harmonyBetaHint">
+            <div class="platform-card-icon dark-icon"><img src="https://cdn.simpleicons.org/harmonyos/FFFFFF" alt="HarmonyOS"></div>
+            <div class="platform-card-copy"><span class="state beta-state" data-zh="内测中" data-en="Beta">内测中</span><h3>HarmonyOS</h3><p data-zh="扫码联系加入内测社群" data-en="Scan to contact us and join the beta">扫码联系加入内测社群</p></div>
+            <button class="beta-trigger" type="button" aria-expanded="false" aria-controls="harmonyQr" data-beta="harmony" data-zh="扫码参加" data-en="Scan to join">扫码参加</button>
+            <div class="qr-popover community-only-popover" id="harmonyQr" role="dialog" aria-label="HarmonyOS 内测社群二维码">
+              <img id="harmonyQrImage" class="community-qr-image" data-community-qr src="./assets/contact-community.png" width="184" height="184" alt="ZT Monitor 内测社群联系二维码">
+              <strong data-zh="扫码参与 HarmonyOS 内测" data-en="Scan to join the HarmonyOS beta">扫码参与 HarmonyOS 内测</strong>
+              <span id="harmonyBetaHint" data-zh="添加时请备注：zt monitor，我们会邀请你进入内测社群" data-en="Please add the note: zt monitor, and we'll invite you to the beta community">添加时请备注：zt monitor，我们会邀请你进入内测社群</span>
+              <a id="harmonyBetaLink" href="./assets/contact-community.png" download="zt-monitor-community-qr.png" data-zh="保存联系二维码" data-en="Save contact QR code">保存联系二维码</a>
+            </div>
+          </article>
+
+          <article class="platform-card planned" data-platform-card="ios">
+            <div class="platform-card-icon muted-icon"><img src="../assets/icons/os-apple.svg" alt="Apple"></div>
+            <div class="platform-card-copy"><span class="state planned-state" data-zh="计划中" data-en="Planned">计划中</span><h3>iOS App</h3><p data-zh="后续推出" data-en="Coming later">后续推出</p></div>
+            <button class="planned-button" type="button" disabled data-zh="敬请期待" data-en="Coming soon">敬请期待</button>
+          </article>
+
+          <article class="platform-card secondary-platform" data-platform-card="linux">
+            <div class="platform-card-icon"><img src="../assets/icons/os-linux.svg" alt="Linux"></div>
+            <div class="platform-card-copy"><span class="state stable-state" data-zh="正式版" data-en="Stable">正式版</span><h3>Linux</h3><p>AppImage · x64</p></div>
+            <div class="platform-links"><a id="linuxDownload" href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener" data-zh="下载" data-en="Download">下载</a></div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-shell section-shell">
+      <div>
+        <a class="brand" href="#top"><img src="../assets/app.png" width="30" height="30" alt=""><span>ZT Monitor</span></a>
+        <p data-zh="所有 AI 编程工具的用量、成本与限额，一处总览。" data-en="Usage, cost, and limits for every AI coding tool, in one place.">所有 AI 编程工具的用量、成本与限额，一处总览。</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/zneoxlab/ztoken-monitor" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/zneoxlab/ztoken-monitor/releases/latest" target="_blank" rel="noopener" data-zh="最新发布" data-en="Latest release">最新发布</a>
+        <a href="https://github.com/zneoxlab/ztoken-monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      </div>
+      <div class="footer-legal">
+        <span>© 2026 智纪探索 版权所有</span>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">湘ICP备19005102号-4</a>
+        <a class="public-security-record" href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002970" target="_blank" rel="noopener noreferrer">
+          <img src="./assets/public-security-badge.png" width="16" height="18" alt="公安备案图标">
+          <span>湘公网安备43010402002970号</span>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <noscript><p class="noscript">启用 JavaScript 后可自动识别设备并获取最新安装包；也可以直接前往 <a href="https://github.com/zneoxlab/ztoken-monitor/releases/latest">GitHub Releases</a>。</p></noscript>
+  <script src="./app.js" defer></script>
+</body>
+</html>
