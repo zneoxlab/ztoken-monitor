@@ -108,10 +108,11 @@ flutter build apk --release --flavor website \
 # 产物：app/build/app/outputs/flutter-apk/app-website-release.apk
 
 # Google Play / 应用商店版（不声明 APK 安装权限）
-flutter build appbundle --release --flavor store \
-  --dart-define=ZT_UPDATE_POLICY_URL=https://你的官网域名/app-update.json
+flutter build appbundle --release --flavor store
 # 产物：app/build/app/outputs/bundle/storeRelease/app-store-release.aab
 ```
+
+商店版默认不传入官网直装策略地址，由应用商店负责版本更新；即使误配置了直装策略，商店渠道也不会下载或安装 APK。
 
 **签名**：Release 构建从被 Git 忽略的 `android/key.properties` 读取长期签名，字段参考 `android/key.properties.example`。官网 APK 的每个后续版本必须保持同一 application ID 和签名证书。
 
