@@ -16,7 +16,7 @@
     "minimumBuild": 2002,
     "delivery": "direct",
     "updateUrl": "downloads/ZT-Monitor-Android.apk",
-    "sha256": "",
+    "sha256": "9a6d0e5a8f6000a211a3c4a9779b28ee6ca23da2e71d222b5b9f740b589f81e1",
     "releaseNotes": "ZT助手移动端 v1.0.0 正式发布。"
   },
   "ohos": {
