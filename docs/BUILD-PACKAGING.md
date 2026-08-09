@@ -78,7 +78,7 @@ npm run verify:release-artifact-names
 
 - Android：`com.zneox.ztoken.ztoken_monitor`
 - iOS：`com.zneox.ztoken.ztokenMonitor`
-- 版本号：`app/pubspec.yaml` 的 `version:`（当前正式版 `1.0.0+2002`）
+- 版本号：`app/pubspec.yaml` 的 `version:`（当前正式版 `1.0.0+2003`）
 
 图标等资源：主仓库 `assets/tools-icon/`、`assets/icons/` 需与 `app/assets/icons/` 保持同步（见 `app-prototype/GOAL.md`）。
 
@@ -103,8 +103,7 @@ cd app
 flutter run --release --flavor website
 
 # 官网 Release APK（侧载 / 官网更新）
-flutter build apk --release --flavor website \
-  --dart-define=ZT_UPDATE_POLICY_URL=https://zt.zneox.com/app-update.json
+flutter build apk --release --flavor website
 # 产物：app/build/app/outputs/flutter-apk/app-website-release.apk
 
 # Google Play / 应用商店版（不声明 APK 安装权限）
@@ -113,6 +112,7 @@ flutter build appbundle --release --flavor store
 ```
 
 商店版默认不传入官网直装策略地址，由应用商店负责版本更新；即使误配置了直装策略，商店渠道也不会下载或安装 APK。
+官网更新策略地址 `https://zt.zneox.com/app-update.json` 已直接内置在 App，Android 和鸿蒙构建都不需要额外传入环境变量。
 
 **签名**：Release 构建从被 Git 忽略的 `android/key.properties` 读取长期签名路径，字段参考 `android/key.properties.example`。签名口令使用项目外的独立文件，密钥库和口令文件必须一起备份。官网 APK 的每个后续版本必须保持同一 application ID 和签名证书。
 

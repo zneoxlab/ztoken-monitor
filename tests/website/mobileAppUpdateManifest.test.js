@@ -16,9 +16,11 @@ test('mobile update manifest declares the formal v1.0.0 baseline', () => {
   assert.equal(manifest.ios.latestVersion, '1.0.0');
   assert.equal(manifest.ios.latestBuild, 2002);
   assert.equal(manifest.android.latestVersion, '1.0.0');
-  assert.equal(manifest.android.latestBuild, 2002);
+  assert.equal(manifest.android.latestBuild, 2003);
   assert.equal(manifest.ohos.latestVersion, '1.0.0');
   assert.equal(manifest.ohos.latestBuild, 1000000);
+  assert.equal(manifest.ohos.enabled, true);
+  assert.equal(manifest.ohos.updateUrl, 'https://zt.zneox.com/#download');
 });
 
 test('Android direct update points at the website APK', () => {
