@@ -27,3 +27,5 @@ app/
 app-prototype/
 docs/BUILD-PACKAGING.md
 .idea/
+# 部署脚本（服务器本地使用，不随仓库管理）
+deploy-saas-hub.sh
