@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "ios": {
+    "enabled": false,
+    "latestVersion": "1.0.0",
+    "latestBuild": 2002,
+    "minimumBuild": 2002,
+    "delivery": "store",
+    "updateUrl": "",
+    "releaseNotes": "ZT助手移动端 v1.0.0 正式发布。"
+  },
+  "android": {
+    "enabled": true,
+    "latestVersion": "1.0.0",
+    "latestBuild": 2002,
+    "minimumBuild": 2002,
+    "delivery": "direct",
+    "updateUrl": "downloads/ZT-Monitor-Android.apk",
+    "sha256": "",
+    "releaseNotes": "ZT助手移动端 v1.0.0 正式发布。"
+  },
+  "ohos": {
+    "enabled": false,
+    "latestVersion": "1.0.0",
+    "latestBuild": 1000000,
+    "minimumBuild": 1000000,
+    "delivery": "store",
+    "updateUrl": "",
+    "releaseNotes": "ZT助手移动端 v1.0.0 正式发布。"
+  }
+}

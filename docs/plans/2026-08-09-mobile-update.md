@@ -10,6 +10,8 @@
 
 ---
 
+**Execution note (2026-08-09):** The user explicitly chose to keep the root repository's existing `app/` ignore boundary. All `app/` edits and Flutter verification in this plan are local workspace changes and must not be forced into Git. Commits contain only tracked website, test, and documentation files.
+
 ### Task 1: Establish the v1.0.0 version and website policy contract
 
 **Files:**

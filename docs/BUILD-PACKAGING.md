@@ -78,7 +78,7 @@ npm run verify:release-artifact-names
 
 - Android：`com.zneox.ztoken.ztoken_monitor`
 - iOS：`com.zneox.ztoken.ztokenMonitor`
-- 版本号：`app/pubspec.yaml` 的 `version:`（当前 `1.0.0-alpha+1`）
+- 版本号：`app/pubspec.yaml` 的 `version:`（当前正式版 `1.0.0+2002`）
 
 图标等资源：主仓库 `assets/tools-icon/`、`assets/icons/` 需与 `app/assets/icons/` 保持同步（见 `app-prototype/GOAL.md`）。
 
@@ -99,19 +99,21 @@ cd app
 ```bash
 cd app
 
-# 调试 APK（连真机 / 模拟器）
-flutter run --release
+# 官网分发版（允许从官网检查并下载签名 APK）
+flutter run --release --flavor website
 
-# Release APK（侧载 / 内测）
-flutter build apk --release
-# 产物：app/build/app/outputs/flutter-apk/app-release.apk
+# 官网 Release APK（侧载 / 官网更新）
+flutter build apk --release --flavor website \
+  --dart-define=ZT_UPDATE_POLICY_URL=https://你的官网域名/app-update.json
+# 产物：app/build/app/outputs/flutter-apk/app-website-release.apk
 
-# Google Play 用 AAB
-flutter build appbundle --release
-# 产物：app/build/app/outputs/bundle/release/app-release.aab
+# Google Play / 应用商店版（不声明 APK 安装权限）
+flutter build appbundle --release --flavor store \
+  --dart-define=ZT_UPDATE_POLICY_URL=https://你的官网域名/app-update.json
+# 产物：app/build/app/outputs/bundle/storeRelease/app-store-release.aab
 ```
 
-**签名**：当前 `android/app/build.gradle.kts` 的 `release` 仍使用 **debug 签名**（TODO 注释）。上架前需在 `android/` 配置 `key.properties` + release `signingConfig`。
+**签名**：Release 构建从被 Git 忽略的 `android/key.properties` 读取长期签名，字段参考 `android/key.properties.example`。官网 APK 的每个后续版本必须保持同一 application ID 和签名证书。
 
 **网络权限**：Release 需在 `android/app/src/main/AndroidManifest.xml` 声明 `INTERNET`（debug/profile 清单不能替代 main）。
 
