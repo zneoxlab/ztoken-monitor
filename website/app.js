@@ -187,7 +187,7 @@ function renderMobileToolRows() {
   if (!box) return;
   box.innerHTML = MOBILE_TOOLS.map((tool) => `
     <div class="tool-row">
-      <img src="../app-prototype/icons/${tool.icon}.png" alt="">
+      <img src="./assets/icons/tools/${tool.icon}.png" alt="">
       <div><span>${tool.name}</span><i><b style="width:${tool.share}%;background:${tool.color}"></b></i></div>
       <strong>${tool.v[mobilePeriod][0]}<small>${tool.v[mobilePeriod][1]}</small></strong>
     </div>`).join('');

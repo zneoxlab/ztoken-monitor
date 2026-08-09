@@ -374,24 +374,24 @@ img {
 }
 
 .button-platform-icon[data-platform="mac"] {
-  background-image: url("../assets/icons/os-apple.svg");
+  background-image: url("./assets/icons/os-apple.svg");
 }
 
 .button-platform-icon[data-platform="windows"] {
-  background-image: url("../assets/icons/os-windows.svg");
+  background-image: url("./assets/icons/os-windows.svg");
 }
 
 .button-platform-icon[data-platform="linux"] {
-  background-image: url("../assets/icons/os-linux.svg");
+  background-image: url("./assets/icons/os-linux.svg");
 }
 
 .button-platform-icon[data-platform="android"] {
-  background-image: url("https://cdn.simpleicons.org/android/3DDC84");
+  background-image: url("./assets/icons/android.svg");
 }
 
 .button-platform-icon[data-platform="harmony"] {
   background-color: #17202d;
-  background-image: url("https://cdn.simpleicons.org/harmonyos/FFFFFF");
+  background-image: url("./assets/icons/harmonyos.svg");
 }
 
 .button-platform-icon[data-platform="unknown"]::after {
@@ -3277,7 +3277,7 @@ a.proof-item:hover,
 
 /* ============================================================
    手机端功能页(2026-08-09):可操作 + 停留时自动轮播
-   页面结构对齐 app-prototype(总览/明细/配额/设备/我的)
+   页面结构包含总览/明细/配额/设备/我的
    ============================================================ */
 
 .mobile-page {
