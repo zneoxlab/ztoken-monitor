@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZT助手</string>
+    <string name="widget_name">用量与额度</string>
+    <string name="widget_description">在桌面查看本月 Token 用量和需要关注的 AI 工具额度</string>
+</resources>

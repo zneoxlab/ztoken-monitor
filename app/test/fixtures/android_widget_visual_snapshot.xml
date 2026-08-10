@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <string name="snapshot">{"state":"ready","theme":"starryBlue","hasUsage":true,"periodLabel":"本月 · 测试数据","tokens":"1.26B","cost":"$212.60","usageUpdatedAtMs":1786296636000,"usageStale":false,"limitsUpdatedAtMs":1786296636000,"limitsStale":false,"quotas":[{"entryKey":"codex|visual-fixture","providerId":"codex","iconId":"codex","providerName":"Codex","windowLabel":"每周","value":"剩余 47%","resetText":"重置 6天 19小时","tone":"low","meterPercent":53,"showMeter":true},{"entryKey":"cursor|visual-fixture","providerId":"cursor","iconId":"cursor","providerName":"Cursor","windowLabel":"Total","value":"剩余 42%","resetText":"重置 19天","tone":"low","meterPercent":58,"showMeter":true}]}</string>
+</map>
