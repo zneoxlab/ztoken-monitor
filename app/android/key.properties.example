@@ -1,0 +1,4 @@
+# 复制为 key.properties 后填写。密钥和口令文件应保存在项目之外并一起备份。
+keyAlias=zt-monitor
+storeFile=/absolute/path/to/zt-monitor-release.jks
+passwordFile=/absolute/path/to/zt-monitor-release.password

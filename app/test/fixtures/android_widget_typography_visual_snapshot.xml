@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<!-- 仅用于 Android 模拟器视觉 QA；数据为合成测试数据，不进入生产运行环境。 -->
+<map>
+    <string name="snapshot">{"state":"ready","theme":"porcelain","hasUsage":true,"periodLabel":"本月","tokens":"1.14B","cost":"$169.82","usageUpdatedAtMs":1786341178000,"usageStale":true,"limitsUpdatedAtMs":1786341178000,"limitsStale":false,"quotas":[{"entryKey":"opencode|typography-fixture","providerId":"opencode","iconId":"opencode","providerName":"OpenCode","windowLabel":"每周","value":"剩余 0%","resetText":"重置 6小时 3分","tone":"critical","meterPercent":100,"showMeter":true},{"entryKey":"codex|typography-fixture","providerId":"codex","iconId":"codex","providerName":"Codex","windowLabel":"每周","value":"剩余 3%","resetText":"","tone":"critical","meterPercent":97,"showMeter":true}]}</string>
+</map>

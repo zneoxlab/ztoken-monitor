@@ -1,0 +1,66 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/xiaozhou/.ohos/config/default_ohos_IjNbT-fIiiZTmLeJXgggNyLThEahJU0da-hoAtn2QcQ=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B04ED6D7A2BDD2294A45D4FEE22B2E362C19A71B03666EE3C30FD19A00DFC994B0262032FEE2983",
+          "profile": "/Users/xiaozhou/.ohos/config/default_ohos_IjNbT-fIiiZTmLeJXgggNyLThEahJU0da-hoAtn2QcQ=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/xiaozhou/.ohos/config/default_ohos_IjNbT-fIiiZTmLeJXgggNyLThEahJU0da-hoAtn2QcQ=.p12",
+          "storePassword": "0000001B6A502C2716DF75F87A6607F005FE6F1E4DA61834EE3B9AE4AB1B39852E10B6E731E91A126710F2"
+        }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "/Users/xiaozhou/hub/harmonyOS/miyao.p12",
+          "storePassword": "00000019F0508BFBEAE31A8B8DC74F68EA3D062359CFD9EE49EEFEE9643BE0A62F622FFF39196871F2",
+          "keyAlias": "miyao",
+          "keyPassword": "0000001985ED1740C971570180B403CD42D467362E1B2A687915CB1342C81F17346A0125F9DCF81155",
+          "signAlg": "SHA256withECDSA",
+          "profile": "/Users/xiaozhou/Downloads/zt助手内测Release.p7b",
+          "certpath": "/Users/xiaozhou/Downloads/zt助手内测版证书.cer"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "release",
+        "compatibleSdkVersion": "5.1.0(18)",
+        "runtimeOS": "HarmonyOS",
+        "targetSdkVersion": "6.1.1(24)"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "profile"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
