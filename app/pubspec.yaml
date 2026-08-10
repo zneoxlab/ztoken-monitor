@@ -1,0 +1,44 @@
+name: ztoken_monitor
+description: "ZT助手 移动端 — AI Token 用量与配额监控(iOS / Android / 鸿蒙 NEXT 单代码库)"
+publish_to: "none"
+version: 1.0.1+2004
+
+environment:
+  # 本地 Web/iOS/Android:Flutter 3.35+(Dart 3.9+);鸿蒙 CI 用 SIG 3.41+(Dart 3.11+)
+  sdk: '>=3.9.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # 状态管理 / 路由 / 网络 / 格式化 / 图表 —— 均纯 Dart,三端通用
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  dio: ^5.7.0
+  intl: ^0.19.0
+  fl_chart: ^0.69.2
+  web: ^1.1.0
+
+  # 偏好存储:iOS/Android 走官方包,鸿蒙走 SIG 适配包
+  shared_preferences: ^2.5.3
+  shared_preferences_harmonyos: ^0.0.1
+
+  # 安全存储(JWT / refreshToken):iOS/Android 走官方包,鸿蒙走 ohos 适配包
+  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage_ohos: ^1.0.0
+
+  # 本地通知(配额阈值提醒):M2 再接。勿用 SIG git 版作默认依赖——其引用
+  # TargetPlatform.ohos,标准 Flutter 无法编 Android;鸿蒙构建前再单独接入 ohos 实现。
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
