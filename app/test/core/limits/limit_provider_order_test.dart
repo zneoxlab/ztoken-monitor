@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ztoken_monitor/core/limits/limit_presentation.dart';
+import 'package:ztoken_monitor/core/limits/limit_display_mode.dart';
 import 'package:ztoken_monitor/core/limits/limit_provider_order.dart';
 import 'package:ztoken_monitor/core/models/stats.dart';
 
@@ -7,12 +8,22 @@ void main() {
   group('orderedLimitProviders', () {
     final providers = [
       const LimitsProvider(provider: 'copilot', status: 'notConfigured'),
-      const LimitsProvider(provider: 'codex', status: 'ok', accountKey: 'a', windows: [
-        LimitsWindow(kind: 'weekly', label: 'Weekly', usedPercent: 50),
-      ]),
-      const LimitsProvider(provider: 'cursor', status: 'ok', accountKey: 'b', windows: [
-        LimitsWindow(kind: 'billing', label: 'Total', usedPercent: 10),
-      ]),
+      const LimitsProvider(
+        provider: 'codex',
+        status: 'ok',
+        accountKey: 'a',
+        windows: [
+          LimitsWindow(kind: 'weekly', label: 'Weekly', usedPercent: 50),
+        ],
+      ),
+      const LimitsProvider(
+        provider: 'cursor',
+        status: 'ok',
+        accountKey: 'b',
+        windows: [
+          LimitsWindow(kind: 'billing', label: 'Total', usedPercent: 10),
+        ],
+      ),
     ];
 
     test('default puts configured providers first', () {
@@ -53,12 +64,20 @@ void main() {
 
   group('limitProviderPlanText', () {
     test('uses planLabel with capitalized display', () {
-      const p = LimitsProvider(provider: 'codex', status: 'ok', planLabel: 'plus');
+      const p = LimitsProvider(
+        provider: 'codex',
+        status: 'ok',
+        planLabel: 'plus',
+      );
       expect(limitProviderPlanText(p), 'Plus');
     });
 
     test('falls back to accountLabel', () {
-      const p = LimitsProvider(provider: 'claude', status: 'ok', accountLabel: 'max');
+      const p = LimitsProvider(
+        provider: 'claude',
+        status: 'ok',
+        accountLabel: 'max',
+      );
       expect(limitProviderPlanText(p), 'Max');
     });
 
@@ -68,7 +87,11 @@ void main() {
     });
 
     test('thirdparty maps known plan labels', () {
-      const p = LimitsProvider(provider: 'thirdparty', status: 'ok', planLabel: 'api key');
+      const p = LimitsProvider(
+        provider: 'thirdparty',
+        status: 'ok',
+        planLabel: 'api key',
+      );
       expect(limitProviderPlanText(p), 'API key');
     });
 
@@ -77,7 +100,9 @@ void main() {
         provider: 'cursor',
         status: 'ok',
         accountLabel: 'Express',
-        windows: const [LimitsWindow(kind: 'billing', label: 'Total', usedPercent: 26)],
+        windows: [
+          LimitsWindow(kind: 'billing', label: 'Total', usedPercent: 26),
+        ],
       );
       expect(limitProviderPlanText(p), 'Express');
       expect(limitAccountLine(p), '—');
@@ -87,7 +112,7 @@ void main() {
       const p = LimitsProvider(
         provider: 'cursor',
         status: 'ok',
-        windows: const [
+        windows: [
           LimitsWindow(
             kind: 'billing',
             label: 'Total',
@@ -106,6 +131,35 @@ void main() {
       expect(limitHomeWindowValue(w), '剩余 3%');
     });
 
+    test(
+      'limitHomeWindowValue supports used percent without changing default',
+      () {
+        const w = LimitsWindow(kind: 'weekly', usedPercent: 42);
+        expect(
+          limitHomeWindowValue(w, displayMode: LimitDisplayMode.used),
+          '已用 42%',
+        );
+      },
+    );
+
+    test('spend window uses selected amount direction when a limit exists', () {
+      const w = LimitsWindow(
+        kind: 'billing',
+        metric: 'spend',
+        used: 2.5,
+        limit: 10,
+        currency: 'USD',
+      );
+      expect(
+        limitWindowValueText(w, displayMode: LimitDisplayMode.remaining),
+        '剩余 7.50 USD',
+      );
+      expect(
+        limitWindowValueText(w, displayMode: LimitDisplayMode.used),
+        '已用 2.50 USD',
+      );
+    });
+
     test('sortedLimitWindows orders session before weekly before billing', () {
       const windows = [
         LimitsWindow(kind: 'billing', label: 'Total'),
@@ -116,17 +170,25 @@ void main() {
       expect(sorted.map((w) => w.kind), ['session', 'weekly', 'billing']);
     });
 
-    test('limitHomeResetText uses compact rolling hint for session windows', () {
-      const w = LimitsWindow(kind: 'session', windowMinutes: 300);
-      expect(limitHomeResetText(w), '5 小时滚动');
-    });
+    test(
+      'limitHomeResetText uses compact rolling hint for session windows',
+      () {
+        const w = LimitsWindow(kind: 'session', windowMinutes: 300);
+        expect(limitHomeResetText(w), '5 小时滚动');
+      },
+    );
 
     test('limitHomeWindows keeps at most two windows by priority', () {
       const windows = [
         LimitsWindow(kind: 'billing', label: 'Total', usedPercent: 10),
         LimitsWindow(kind: 'session', label: 'Auto', usedPercent: 14),
         LimitsWindow(kind: 'billing', label: 'API', usedPercent: 0),
-        LimitsWindow(kind: 'billing', label: 'Credits', usedPercent: 0, metric: 'credits'),
+        LimitsWindow(
+          kind: 'billing',
+          label: 'Credits',
+          usedPercent: 0,
+          metric: 'credits',
+        ),
       ];
       final home = limitHomeWindows(windows);
       expect(home.length, 2);

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/limits/limit_display_mode.dart';
 import '../../core/limits/limit_provider_order.dart';
 import '../../core/models/stats.dart';
+import '../../core/network/auth_mode.dart';
 import '../../core/network/stats_repository.dart';
+import '../../core/notifications/notification_models.dart';
+import '../../core/notifications/notification_rules_repository.dart';
 import '../../core/storage/prefs_storage.dart';
 import '../../theme/glass_material.dart';
 import '../../theme/theme_extension.dart';
 import '../../widgets/app_page_header.dart';
 import 'widgets/limits_provider_card.dart';
+import 'widgets/quota_notification_settings.dart';
 
 class LimitsPage extends ConsumerWidget {
   const LimitsPage({super.key});
@@ -16,12 +21,17 @@ class LimitsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(statsProvider);
+    final auth = ref.watch(authProvider);
+    final notificationData = ref.watch(notificationRulesProvider).valueOrNull;
+    final displayMode = ref.watch(settingsProvider).limitDisplayMode;
     return Scaffold(
       body: AuroraBackground(
         child: SafeArea(
           child: async.when(
             loading: () => const _Loading(),
-            error: (e, st) => _Error(onRetry: () => ref.read(statsProvider.notifier).refresh()),
+            error: (e, st) => _Error(
+              onRetry: () => ref.read(statsProvider.notifier).refresh(),
+            ),
             data: (snapshot) {
               final limits = snapshot.limits;
               if (limits == null || limits.providers.isEmpty) {
@@ -34,7 +44,9 @@ class LimitsPage extends ConsumerWidget {
                   ],
                 );
               }
-              final savedOrder = parseLimitProviderOrder(ref.watch(settingsProvider).limitProviderOrder);
+              final savedOrder = parseLimitProviderOrder(
+                ref.watch(settingsProvider).limitProviderOrder,
+              );
               final providers = orderedLimitProviders(
                 limits.providers,
                 savedOrder: savedOrder,
@@ -43,6 +55,13 @@ class LimitsPage extends ConsumerWidget {
                 providers: providers,
                 staleAfterMs: snapshot.staleAfterMs,
                 limitsUpdatedAt: limits.updatedAt,
+                displayMode: displayMode,
+                notificationTargets: auth.mode == AuthMode.saas
+                    ? notificationData?.targets.targets ?? const []
+                    : const [],
+                notificationRules: auth.mode == AuthMode.saas
+                    ? notificationData?.rules ?? const NotificationRulesDocument()
+                    : const NotificationRulesDocument(),
                 onReorder: (oldIndex, newIndex) async {
                   final order = reorderLimitProviderEntry(
                     savedOrder,
@@ -50,7 +69,9 @@ class LimitsPage extends ConsumerWidget {
                     oldIndex,
                     newIndex,
                   );
-                  await ref.read(settingsProvider.notifier).setLimitProviderOrder(
+                  await ref
+                      .read(settingsProvider.notifier)
+                      .setLimitProviderOrder(
                         serializeLimitProviderOrder(order),
                       );
                 },
@@ -68,12 +89,18 @@ class _LimitsList extends StatelessWidget {
     required this.providers,
     required this.staleAfterMs,
     required this.limitsUpdatedAt,
+    required this.displayMode,
+    required this.notificationTargets,
+    required this.notificationRules,
     required this.onReorder,
   });
 
   final List<LimitsProvider> providers;
   final int staleAfterMs;
   final String limitsUpdatedAt;
+  final LimitDisplayMode displayMode;
+  final List<NotificationTarget> notificationTargets;
+  final NotificationRulesDocument notificationRules;
   final Future<void> Function(int oldIndex, int newIndex) onReorder;
 
   @override
@@ -103,15 +130,28 @@ class _LimitsList extends StatelessWidget {
             itemBuilder: (context, index) {
               final p = providers[index];
               final key = limitEntryKey(p);
+              final notificationTarget = _notificationTargetForProvider(
+                p,
+                notificationTargets,
+              );
               return ReorderableDelayedDragStartListener(
                 key: ValueKey(key),
                 index: index,
                 child: Padding(
-                  padding: EdgeInsets.only(bottom: index < providers.length - 1 ? 10 : 0),
+                  padding: EdgeInsets.only(
+                    bottom: index < providers.length - 1 ? 10 : 0,
+                  ),
                   child: LimitsProviderCard(
                     provider: p,
                     staleAfterMs: staleAfterMs,
                     limitsUpdatedAt: limitsUpdatedAt,
+                    displayMode: displayMode,
+                    notificationSettings: notificationTarget == null
+                        ? null
+                        : QuotaNotificationSettings(
+                            target: notificationTarget,
+                            document: notificationRules,
+                          ),
                   ),
                 ),
               );
@@ -121,6 +161,27 @@ class _LimitsList extends StatelessWidget {
       ],
     );
   }
+}
+
+NotificationTarget? _notificationTargetForProvider(
+  LimitsProvider provider,
+  List<NotificationTarget> targets,
+) {
+  final candidates = targets
+      .where((target) => target.provider == provider.provider)
+      .toList(growable: false);
+  if (candidates.isEmpty) return null;
+  for (final target in candidates) {
+    if (target.accountIdentity.isNotEmpty &&
+        target.accountIdentity == provider.accountIdentity) {
+      return target;
+    }
+    if (target.accountKey.isNotEmpty && target.accountKey == provider.accountKey) {
+      return target;
+    }
+  }
+  // 老服务端尚未下发稳定身份时，只有一个同 provider 目标才可安全回退。
+  return candidates.length == 1 ? candidates.single : null;
 }
 
 class _Loading extends StatelessWidget {
@@ -159,8 +220,18 @@ class _Error extends StatelessWidget {
             onTap: onRetry,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(color: t.accent, borderRadius: BorderRadius.circular(10)),
-              child: const Text('重试', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF14201A))),
+              decoration: BoxDecoration(
+                color: t.accent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                '重试',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF14201A),
+                ),
+              ),
             ),
           ),
         ],
@@ -180,7 +251,10 @@ class _EmptyState extends StatelessWidget {
         const SizedBox(height: 12),
         Text('暂无配额数据', style: TextStyle(fontSize: 14, color: t.muted)),
         const SizedBox(height: 6),
-        Text('在桌面端设置 → AI Tool Limits 配置', style: TextStyle(fontSize: 12, color: t.faint)),
+        Text(
+          '在桌面端设置 → AI Tool Limits 配置',
+          style: TextStyle(fontSize: 12, color: t.faint),
+        ),
       ],
     );
   }

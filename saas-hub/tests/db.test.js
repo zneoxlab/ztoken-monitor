@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const { createPool } = require('../src/db');
 const db = require('../src/db');
 const { loadConfig } = require('../src/config');
+const { createPushTokenCrypto } = require('../src/pushTokenCrypto');
 
 // 检测 MySQL 是否可用：要求显式设置 SAAS_HUB_DB_TEST=1 且能连上
 async function tryGetPool() {
@@ -161,4 +162,43 @@ test('多租户隔离：两用户同 deviceId 不冲突', async (t) => {
   assert.equal(d2.today.totalTokens, 2);
   const rows = await pool.execute('SELECT user_id FROM devices WHERE device_id = :id', { id: sharedDeviceId });
   assert.equal(rows[0].length, 2, '两用户各一条记录');
+});
+
+test('通知规则和加密推送安装 CRUD 往返', async (t) => {
+  const pool = await tryGetPool();
+  if (!pool) { t.skip('MySQL unavailable'); return; }
+
+  const auth = require('../src/auth');
+  const cred = await auth.hashPassword('password123');
+  const user = await db.createUser(pool, {
+    email: `dbtest_push_${Date.now()}@example.com`, passwordHash: cred.hash, passwordSalt: cred.salt
+  });
+  t.after(async () => {
+    await pool.execute('DELETE FROM users WHERE id = :id', { id: user.id });
+    await pool.end();
+  });
+
+  const doc = {
+    version: 2,
+    updatedAt: '2026-08-12T00:00:00.000Z',
+    rules: [{
+      id: 'codex-main', targetId: 'codex:main', enabled: true, refreshEnabled: true,
+      warningEnabled: true, thresholdPercent: 20, windowIds: ['quota:session:300']
+    }]
+  };
+  await db.replaceNotificationRules(pool, user.id, doc);
+  assert.deepEqual(await db.getNotificationRules(pool, user.id), doc);
+
+  const envelope = createPushTokenCrypto('db-test-key').encrypt('do-not-store-me-in-plaintext');
+  await db.registerPushInstallation(pool, user.id, {
+    installationId: 'device-a', platform: 'ios', provider: 'apns', environment: 'sandbox', appVersion: '1.0.0', ...envelope
+  });
+  const [rows] = await pool.execute(
+    'SELECT token_ciphertext AS tokenCiphertext, provider, environment, app_version AS appVersion FROM push_installations WHERE user_id = :userId',
+    { userId: user.id }
+  );
+  assert.equal(rows[0].provider, 'apns');
+  assert.equal(rows[0].environment, 'sandbox');
+  assert.equal(rows[0].appVersion, '1.0.0');
+  assert.notEqual(rows[0].tokenCiphertext, 'do-not-store-me-in-plaintext');
 });

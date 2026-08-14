@@ -140,10 +140,13 @@ test('Claude Web source takes precedence and carries stable account metadata', a
 
   assert.equal(first.provider.source, 'web');
   assert.equal(first.provider.accountKey, second.provider.accountKey);
+  assert.equal(first.provider.accountIdentity, second.provider.accountIdentity);
+  assert.ok(first.provider.accountIdentity.startsWith('sha256:'));
   assert.equal(first.provider.accountEmail, 'owner@example.com');
   assert.equal(first.provider.accountName, 'Example Workspace');
   assert.equal(first.provider.accountLabel, 'Max 20x');
   assert.deepEqual(first.provider.windows.map((window) => window.kind), ['session', 'weekly']);
+  assert.deepEqual(first.provider.windows.map((window) => window.windowId), ['five-hour', 'seven-day']);
   // The pool is asked for, comes back unfunded, and so contributes no row.
   assert.equal(first.provider.balance, null);
   assert.equal(first.requests.length, 4);

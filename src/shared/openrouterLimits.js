@@ -81,7 +81,7 @@ function keyLimitWindow(data) {
       : reset === 'monthly'
         ? 'Monthly limit'
         : 'API key limit';
-  return { kind, label, used, limit, remaining, showMeter: true };
+  return { kind, windowId: 'api-key-limit', label, used, limit, remaining, showMeter: true };
 }
 
 function creditsWindow(data) {
@@ -90,6 +90,7 @@ function creditsWindow(data) {
   if (totalCredits === null || totalCredits < 0 || totalUsage === null || totalUsage < 0) return null;
   return {
     kind: 'billing',
+    windowId: 'credits',
     metric: 'credits',
     label: 'Credits',
     used: Math.max(0, totalUsage),

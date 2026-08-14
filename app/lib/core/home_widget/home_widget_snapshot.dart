@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/theme_mode.dart';
 import '../format/formatters.dart';
+import '../limits/limit_display_mode.dart';
 import '../limits/limit_presentation.dart';
 import '../limits/limit_provider_order.dart';
 import '../models/stats.dart';
@@ -147,6 +148,7 @@ HomeWidgetSnapshot buildHomeWidgetSnapshot({
       snapshot.limits,
       pinnedEntries: parseLimitProviderOrder(settings.homeWidgetPinnedLimits),
       savedProviderOrder: parseLimitProviderOrder(settings.limitProviderOrder),
+      displayMode: settings.limitDisplayMode,
       now: current,
     ),
   );
@@ -156,6 +158,7 @@ List<HomeWidgetQuotaItem> selectHomeWidgetQuotaItems(
   LimitsAgg? limits, {
   List<String> pinnedEntries = const [],
   List<String> savedProviderOrder = const [],
+  LimitDisplayMode displayMode = LimitDisplayMode.remaining,
   DateTime? now,
 }) {
   if (limits == null || limits.providers.isEmpty) return const [];
@@ -180,6 +183,7 @@ List<HomeWidgetQuotaItem> selectHomeWidgetQuotaItems(
       duplicateProvider:
           (providerCounts[provider.provider.trim().toLowerCase()] ?? 0) > 1,
       providerOrder: providerOrder[limitEntryKey(provider)] ?? 1 << 20,
+      displayMode: displayMode,
       now: current,
     );
     if (candidate != null) candidates.add(candidate);
@@ -224,6 +228,7 @@ _QuotaCandidate? _quotaCandidate(
   LimitsProvider provider, {
   required bool duplicateProvider,
   required int providerOrder,
+  required LimitDisplayMode displayMode,
   required DateTime now,
 }) {
   final statusSeverity = _statusSeverity(provider.status);
@@ -258,7 +263,7 @@ _QuotaCandidate? _quotaCandidate(
       windowLabel: detailLabel,
       value: statusAbnormal
           ? limitStatusLabel(provider)
-          : _widgetWindowValue(window!),
+          : _widgetWindowValue(window!, displayMode),
       resetText: statusAbnormal || window == null
           ? ''
           : limitHomeResetText(window, now: now),
@@ -325,9 +330,9 @@ int _statusSeverity(String raw) {
   };
 }
 
-String _widgetWindowValue(LimitsWindow window) {
+String _widgetWindowValue(LimitsWindow window, LimitDisplayMode displayMode) {
   if (window.isCredits) return '余额 ${limitWindowValueText(window)}';
-  return limitHomeWindowValue(window);
+  return limitHomeWindowValue(window, displayMode: displayMode);
 }
 
 String _providerIconId(String raw) {

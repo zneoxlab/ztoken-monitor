@@ -39,6 +39,8 @@ test('fetchAntigravityLimits maps quota summary to two session and weekly groups
   assert.equal(result.sourceDetail, 'app');
   assert.equal(result.accountLabel, 'Pro');
   assert.equal(result.accountEmail, 'a@b.com');
+  assert.ok(result.accountIdentity.startsWith('sha256:'));
+  assert.deepEqual(result.windows.map((window) => window.windowId), ['session:1', 'weekly:2', 'session:3', 'weekly:4']);
   assert.deepEqual(result.windows.map((window) => [window.label, window.kind, window.windowMinutes]), [
     ['Gemini 5-hour', 'session', 300],
     ['Gemini weekly', 'weekly', 10_080],

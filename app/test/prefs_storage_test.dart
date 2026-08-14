@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ztoken_monitor/core/storage/prefs_storage.dart';
 import 'package:ztoken_monitor/core/format/formatters.dart';
+import 'package:ztoken_monitor/core/limits/limit_display_mode.dart';
 import 'package:ztoken_monitor/theme/theme_mode.dart';
 
 void main() {
@@ -14,6 +15,7 @@ void main() {
       expect(s.displayCurrency, DisplayCurrency.usd);
       expect(s.notifyEnabled, true);
       expect(s.notifyThresholdPercent, 80);
+      expect(s.limitDisplayMode, LimitDisplayMode.remaining);
       expect(s.homeWidgetPinnedLimits, isEmpty);
     });
   });
@@ -29,6 +31,7 @@ void main() {
         displayCurrency: DisplayCurrency.cny,
         notifyEnabled: false,
         notifyThresholdPercent: 50,
+        limitDisplayMode: LimitDisplayMode.used,
         homeWidgetPinnedLimits: 'codex|one,cursor|two',
       );
 
@@ -49,6 +52,7 @@ void main() {
       expect(restored.displayCurrency, DisplayCurrency.cny);
       expect(restored.notifyEnabled, false);
       expect(restored.notifyThresholdPercent, 50);
+      expect(restored.limitDisplayMode, LimitDisplayMode.used);
       expect(restored.homeWidgetPinnedLimits, 'codex|one,cursor|two');
     });
 
@@ -61,6 +65,7 @@ void main() {
       expect(s.displayCurrency, DisplayCurrency.usd);
       expect(s.notifyEnabled, true);
       expect(s.notifyThresholdPercent, 80);
+      expect(s.limitDisplayMode, LimitDisplayMode.remaining);
     });
 
     test('未知 themeMode 字符串前向兼容回落 system', () async {
@@ -121,6 +126,20 @@ void main() {
 
       await notifier.setNotifyThresholdPercent(0);
       expect(notifier.state.notifyThresholdPercent, 1);
+    });
+
+    test('setLimitDisplayMode 更新并持久化', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = SettingsNotifier(prefs);
+      await notifier.load();
+
+      await notifier.setLimitDisplayMode(LimitDisplayMode.used);
+      expect(notifier.state.limitDisplayMode, LimitDisplayMode.used);
+      expect(
+        AppSettings.fromPrefs(prefs).limitDisplayMode,
+        LimitDisplayMode.used,
+      );
     });
 
     test('setDisplayCurrency 持久化', () async {

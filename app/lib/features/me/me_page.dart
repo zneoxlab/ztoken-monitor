@@ -6,12 +6,14 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_version.dart';
 import '../../core/format/formatters.dart' show DisplayCurrency;
 import '../../core/logging/app_log.dart';
+import '../../core/limits/limit_display_mode.dart';
 import '../../core/limits/limit_presentation.dart';
 import '../../core/limits/limit_provider_order.dart';
 import '../../core/models/stats.dart';
 import '../../core/network/auth_mode.dart';
 import '../../core/network/stats_repository.dart';
 import '../../core/network/sse_client.dart';
+import '../../core/notifications/push_lifecycle.dart';
 import '../../core/router.dart';
 import '../../core/storage/prefs_storage.dart';
 import '../../core/update/app_update_dialog.dart';
@@ -28,7 +30,7 @@ import '../auth/legal_documents.dart';
 // 账户卡:邮箱头像字母 + 连接状态(SSE/轮询/离线)+ 退出登录。
 // 连接组:服务器地址(展示)+ 实时推送开关(SSE on/off,off 走轮询)。
 // 显示组:货币(USD/CNY/HKD/TWD)+ 主题(4 色 + 跟随系统)+ 材质(实色/玻璃)。
-// 关于:版本号。通知/语言/开源仓库等入口 alpha 阶段暂不展示。
+// 配额通知在“配额”页按账户单独配置，避免全局开关误覆盖不同账户。
 // ============================================================
 
 class MePage extends ConsumerWidget {
@@ -50,98 +52,112 @@ class MePage extends ConsumerWidget {
     return Scaffold(
       body: AuroraBackground(
         child: SafeArea(
-          child: ListView(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              const AppPageHeader(title: '我的', subtitle: '账户与设置'),
-              const SizedBox(height: 6),
-              _AccountCard(auth: auth, connState: connState),
-              const SizedBox(height: 10),
-              _SectionCard(
-                title: '连接',
-                children: [
-                  _Row(label: '服务器地址', value: settings.hubUrl, mono: true),
-                  _Row(label: '连接方式', value: _connLabel(connState)),
-                  _SwitchRow(
-                    label: '实时推送(SSE)',
-                    subtitle: '关闭后改为轮询(下次启动生效)',
-                    value: settings.sseEnabled,
-                    onChanged: (v) =>
-                        ref.read(settingsProvider.notifier).setSseEnabled(v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _SectionCard(
-                title: '显示',
-                children: [
-                  _ChoiceRow(
-                    label: '货币',
-                    options: const ['USD', 'CNY', 'HKD', 'TWD'],
-                    selectedIndex: settings.displayCurrency.index,
-                    onSelected: (i) => ref
-                        .read(settingsProvider.notifier)
-                        .setDisplayCurrency(DisplayCurrency.values[i]),
-                  ),
-                  _ChoiceRow(
-                    label: '主题',
-                    options: [for (final o in themePickerOptions) o.$2],
-                    selectedIndex: themePickerIndex(settings.themeMode),
-                    onSelected: (i) => ref
-                        .read(settingsProvider.notifier)
-                        .setThemeMode(themeModeFromPickerIndex(i)),
-                  ),
-                  _ChoiceRow(
-                    label: '材质',
-                    options: const ['默认', '透明玻璃'],
-                    selectedIndex: settings.material.index,
-                    onSelected: (i) => ref
-                        .read(settingsProvider.notifier)
-                        .setMaterial(AppMaterial.values[i]),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _SectionCard(
-                title: '桌面小组件',
-                children: [
-                  _WidgetQuotaPickerRow(
-                    providers: limitProviders,
-                    pinnedEntries: parseLimitProviderOrder(
-                      settings.homeWidgetPinnedLimits,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AppPageHeader(title: '我的', subtitle: '账户与设置'),
+                const SizedBox(height: 6),
+                _AccountCard(auth: auth, connState: connState),
+                const SizedBox(height: 10),
+                _SectionCard(
+                  title: '连接',
+                  children: [
+                    _Row(label: '服务器地址', value: settings.hubUrl, mono: true),
+                    _Row(label: '连接方式', value: _connLabel(connState)),
+                    _SwitchRow(
+                      label: '实时推送(SSE)',
+                      subtitle: '关闭后改为轮询(下次启动生效)',
+                      value: settings.sseEnabled,
+                      onChanged: (v) =>
+                          ref.read(settingsProvider.notifier).setSseEnabled(v),
                     ),
-                    onChanged: (entries) => ref
-                        .read(settingsProvider.notifier)
-                        .setHomeWidgetPinnedLimits(entries.join(',')),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _SectionCard(
-                title: '关于',
-                children: [
-                  const _VersionExportRow(),
-                  const AppUpdateCheckRow(),
-                  _LinkRow(
-                    label: LegalDocuments.userAgreementTitle,
-                    onTap: () => showLegalDocument(
-                      context,
-                      title: LegalDocuments.userAgreementTitle,
-                      body: LegalDocuments.userAgreementBody,
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _SectionCard(
+                  title: '显示',
+                  children: [
+                    _ChoiceRow(
+                      label: '货币',
+                      options: const ['USD', 'CNY', 'HKD', 'TWD'],
+                      selectedIndex: settings.displayCurrency.index,
+                      onSelected: (i) => ref
+                          .read(settingsProvider.notifier)
+                          .setDisplayCurrency(DisplayCurrency.values[i]),
                     ),
-                  ),
-                  _LinkRow(
-                    label: LegalDocuments.privacyPolicyTitle,
-                    onTap: () => showLegalDocument(
-                      context,
-                      title: LegalDocuments.privacyPolicyTitle,
-                      body: LegalDocuments.privacyPolicyBody,
+                    _ChoiceRow(
+                      label: '主题',
+                      options: [for (final o in themePickerOptions) o.$2],
+                      selectedIndex: themePickerIndex(settings.themeMode),
+                      onSelected: (i) => ref
+                          .read(settingsProvider.notifier)
+                          .setThemeMode(themeModeFromPickerIndex(i)),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
+                    _ChoiceRow(
+                      label: '材质',
+                      options: const ['默认', '透明玻璃'],
+                      selectedIndex: settings.material.index,
+                      onSelected: (i) => ref
+                          .read(settingsProvider.notifier)
+                          .setMaterial(AppMaterial.values[i]),
+                    ),
+                    _ChoiceRow(
+                      label: '配额百分比',
+                      options: [
+                        limitDisplayModeLabel(LimitDisplayMode.remaining),
+                        limitDisplayModeLabel(LimitDisplayMode.used),
+                      ],
+                      selectedIndex: settings.limitDisplayMode.index,
+                      onSelected: (i) => ref
+                          .read(settingsProvider.notifier)
+                          .setLimitDisplayMode(LimitDisplayMode.values[i]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _SectionCard(
+                  title: '桌面小组件',
+                  children: [
+                    _WidgetQuotaPickerRow(
+                      providers: limitProviders,
+                      pinnedEntries: parseLimitProviderOrder(
+                        settings.homeWidgetPinnedLimits,
+                      ),
+                      onChanged: (entries) => ref
+                          .read(settingsProvider.notifier)
+                          .setHomeWidgetPinnedLimits(entries.join(',')),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _SectionCard(
+                  title: '关于',
+                  children: [
+                    const _VersionExportRow(),
+                    const AppUpdateCheckRow(),
+                    _LinkRow(
+                      label: LegalDocuments.userAgreementTitle,
+                      onTap: () => showLegalDocument(
+                        context,
+                        title: LegalDocuments.userAgreementTitle,
+                        body: LegalDocuments.userAgreementBody,
+                      ),
+                    ),
+                    _LinkRow(
+                      label: LegalDocuments.privacyPolicyTitle,
+                      onTap: () => showLegalDocument(
+                        context,
+                        title: LegalDocuments.privacyPolicyTitle,
+                        body: LegalDocuments.privacyPolicyBody,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
@@ -196,7 +212,10 @@ class _WidgetQuotaPickerRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('额度显示', style: TextStyle(fontSize: 12.5, color: t.text)),
+                Text(
+                  '小组件额度账户',
+                  style: TextStyle(fontSize: 12.5, color: t.text),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   providers.isEmpty ? '暂无已配置额度账户' : '最多固定两个；留空时优先显示风险项',
@@ -464,6 +483,7 @@ class _AccountCard extends ConsumerWidget {
 
   // 退出登录:清凭证(secure + prefs 降级)→ 路由守卫转 /login。
   Future<void> _logout(WidgetRef ref, BuildContext context) async {
+    await ref.read(pushLifecycleProvider).revokeBeforeLogout();
     await ref.read(authProvider.notifier).clearSession();
     if (!context.mounted) return;
     context.go(AppRoutes.login);

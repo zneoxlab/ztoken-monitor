@@ -4,6 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/stats.dart';
+import '../notifications/notification_rules_repository.dart';
+import '../notifications/quota_notification.dart';
+import '../notifications/quota_notification_service.dart';
+import '../storage/prefs_storage.dart';
 import 'auth_mode.dart';
 import 'dio_client.dart';
 import 'sse_client.dart';
@@ -11,8 +15,9 @@ import 'sse_client.dart';
 // 会话缓存键:登录/登出/切账号时变化,用于重建 statsProvider 与失效 history。
 String sessionCacheKey(AuthState auth) {
   if (!auth.isAuthenticated) return '';
-  final credential =
-      auth.mode == AuthMode.saas ? auth.accessToken : auth.hubSecret;
+  final credential = auth.mode == AuthMode.saas
+      ? auth.accessToken
+      : auth.hubSecret;
   return '${auth.mode.name}:${credential ?? ''}:${auth.userEmail ?? ''}';
 }
 
@@ -43,7 +48,9 @@ final sessionDataLifecycleProvider = Provider<void>((ref) {
 
 // 单次拉取:GET /api/stats → StatsSnapshot。供冷启动与轮询降级复用。
 Future<StatsSnapshot> fetchStats(Ref ref) async {
-  final resp = await ref.read(dioProvider).get<dynamic>(
+  final resp = await ref
+      .read(dioProvider)
+      .get<dynamic>(
         '/api/stats',
         options: Options(receiveTimeout: kHubDataReceiveTimeout),
       );
@@ -55,7 +62,9 @@ Future<StatsSnapshot> fetchStats(Ref ref) async {
 // 热力图需要近一年(365 天)数据,故单独拉这条;不并入 stats(避免撑大每帧 SSE)。
 // 懒加载:首页热力图卡 ref.watch 时才发请求。
 Future<HistoryPreview> fetchHistory(Ref ref) async {
-  final resp = await ref.read(dioProvider).get<dynamic>(
+  final resp = await ref
+      .read(dioProvider)
+      .get<dynamic>(
         '/api/history',
         options: Options(receiveTimeout: kHubDataReceiveTimeout),
       );
@@ -68,7 +77,8 @@ final historyProvider = FutureProvider<HistoryPreview>((ref) async {
 });
 
 class StatsNotifier extends StateNotifier<AsyncValue<StatsSnapshot>> {
-  StatsNotifier(this._ref, {bool start = true}) : super(const AsyncValue.loading()) {
+  StatsNotifier(this._ref, {bool start = true})
+    : super(const AsyncValue.loading()) {
     if (start) _init();
   }
 
@@ -92,12 +102,15 @@ class StatsNotifier extends StateNotifier<AsyncValue<StatsSnapshot>> {
       // GET 失败仍继续建 SSE(网络恢复后能补上)
     }
     // 2. 订阅 SSE/轮询增量帧
-    _statsSub = _ref.read(sseClientProvider).stats.listen(
-      _onStatsFrame,
-      onError: (Object e) {
-        // SSE 流本身错(不该发生,SseClient 内部已容错);忽略
-      },
-    );
+    _statsSub = _ref
+        .read(sseClientProvider)
+        .stats
+        .listen(
+          _onStatsFrame,
+          onError: (Object e) {
+            // SSE 流本身错(不该发生,SseClient 内部已容错);忽略
+          },
+        );
     // 3. 启动 SSE 连接(若未启动)
     await _ref.read(sseClientProvider).start();
   }
@@ -105,7 +118,11 @@ class StatsNotifier extends StateNotifier<AsyncValue<StatsSnapshot>> {
   void _onStatsFrame(Map<String, dynamic> raw) {
     if (!mounted) return;
     try {
-      state = AsyncValue.data(StatsSnapshot.fromJson(raw));
+      final previous = state.valueOrNull;
+      final next = StatsSnapshot.fromJson(raw);
+      state = AsyncValue.data(next);
+      _syncNotificationRules(previous, next);
+      _notifyQuotaChanges(previous, next);
     } catch (_) {
       // 单帧解析失败:保留上一个 data,不污染
     }
@@ -116,11 +133,58 @@ class StatsNotifier extends StateNotifier<AsyncValue<StatsSnapshot>> {
     try {
       final snapshot = await fetchStats(_ref);
       if (!mounted) return;
+      // GET 返回期间可能已经收到 SSE 帧,以提交前的最新状态作为通知基线,
+      // 避免同一次变化被手动刷新重复提醒。
+      final previous = state.valueOrNull;
       state = AsyncValue.data(snapshot);
+      _syncNotificationRules(previous, snapshot);
+      _notifyQuotaChanges(previous, snapshot);
     } catch (_) {
       // 刷新失败保留旧数据
     }
     await _ref.read(sseClientProvider).onResume();
+  }
+
+  void _notifyQuotaChanges(StatsSnapshot? previous, StatsSnapshot next) {
+    // SaaS 的一次性语义由 Hub 持久化状态机负责。这里再比较会导致
+    // 前台 App 与服务端推送重复；只有自建 Hub 保留本地回退。
+    if (!usesLocalQuotaNotificationFallback(_ref.read(authProvider).mode)) {
+      return;
+    }
+    final settings = _ref.read(settingsProvider);
+    if (!settings.notifyEnabled) return;
+
+    final events = detectQuotaNotificationEvents(
+      previous: previous?.limits,
+      current: next.limits,
+      thresholdPercent: settings.notifyThresholdPercent,
+    );
+    if (events.isEmpty) return;
+
+    final grouped = <QuotaNotificationKind, List<QuotaNotificationEvent>>{};
+    for (final event in events) {
+      grouped.putIfAbsent(event.kind, () => []).add(event);
+    }
+    final service = _ref.read(quotaNotificationServiceProvider);
+    for (final entry in grouped.entries) {
+      unawaited(service.show(entry.key, entry.value));
+    }
+  }
+
+  void _syncNotificationRules(StatsSnapshot? previous, StatsSnapshot next) {
+    if (_ref.read(authProvider).mode != AuthMode.saas) return;
+    final version = next.notificationRulesUpdatedAt;
+    if (version.isEmpty || version == previous?.notificationRulesUpdatedAt) {
+      return;
+    }
+    final localVersion = _ref
+        .read(notificationRulesProvider)
+        .valueOrNull
+        ?.rules
+        .updatedAt;
+    if (version != localVersion) {
+      unawaited(_ref.read(notificationRulesProvider.notifier).load());
+    }
   }
 
   @override
@@ -134,10 +198,10 @@ class StatsNotifier extends StateNotifier<AsyncValue<StatsSnapshot>> {
 // 绑定 sessionCacheKey:登出/切账号销毁旧 notifier,避免新登录仍显示上一用户数据。
 final statsProvider =
     StateNotifierProvider<StatsNotifier, AsyncValue<StatsSnapshot>>((ref) {
-  ref.watch(sessionDataLifecycleProvider);
-  final sessionKey = ref.watch(sessionCacheKeyProvider);
-  if (sessionKey.isEmpty) {
-    return StatsNotifier(ref, start: false);
-  }
-  return StatsNotifier(ref);
-});
+      ref.watch(sessionDataLifecycleProvider);
+      final sessionKey = ref.watch(sessionCacheKeyProvider);
+      if (sessionKey.isEmpty) {
+        return StatsNotifier(ref, start: false);
+      }
+      return StatsNotifier(ref);
+    });

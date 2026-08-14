@@ -37,6 +37,7 @@ ZT助手 重视您的隐私。本政策说明我们如何收集、使用与保�
 一、我们收集的信息
 1. 本应用登录：为连接云端 Hub，我们会处理您注册/登录本应用时提供的邮箱与密码（或自建 Hub 的共享密钥），用于身份验证与数据同步。
 2. 用量数据：您设备上的桌面端采集程序上报的 token 用量、花费、配额状态、设备标识等统计信息，用于在移动端展示与多设备汇总。
+3. 系统通知：仅当您在配额页主动启用通知后，本应用会向云端 Hub 提交随机安装标识、设备平台、App 版本及系统推送令牌，用于发送您配置的额度刷新和额度预警。推送令牌在服务端加密保存；通知锁屏正文不包含邮箱、账号标识、余额或消费明细。关闭全部配额通知或退出登录时，本应用会尝试撤销当前安装的推送绑定。
 
 二、我们不收集、不存储的信息
 除本应用登录所需的账号与密码外，我们不在云端存储任何第三方 AI 服务（如 Cursor、Claude、OpenRouter 等）的账号密码、API 密钥、Cookie 或其他登录凭证。
@@ -44,11 +45,12 @@ ZT助手 重视您的隐私。本政策说明我们如何收集、使用与保�
 上述第三方凭证仅保存在您电脑端已绑定账号的本地设备上，由桌面端程序在本地读取与使用，不会上传至我们的云端。
 
 三、数据用途
-同步至云端的数据仅用于为您记录、汇总与展示用量历史及多设备视图，不会用于广告投放，亦不会出售给第三方。
+同步至云端的数据仅用于为您记录、汇总与展示用量历史、多设备视图，以及在您主动配置后判断并发送配额通知，不会用于广告投放，亦不会出售给第三方。
 
 四、数据存储与安全
 1. 本应用登录凭证在设备端采用系统提供的安全存储；云端传输使用 HTTPS。
-2. 您可随时退出登录以清除本设备上的会话信息。
+2. 推送服务由设备操作系统对应的推送通道送达；推送令牌仅用于本应用通知，不用于识别第三方 AI 账号。
+3. 您可随时关闭全部配额通知以撤销当前安装绑定，或退出登录以清除本设备上的会话信息并尝试撤销绑定。
 
 五、您的权利
 您可停止使用本应用、退出登录，并联系我们在合理范围内删除与您 Hub 账号关联的云端账户数据（用量汇总记录）。
@@ -60,7 +62,11 @@ ZT助手 重视您的隐私。本政策说明我们如何收集、使用与保�
 ''';
 }
 
-void showLegalDocument(BuildContext context, {required String title, required String body}) {
+void showLegalDocument(
+  BuildContext context, {
+  required String title,
+  required String body,
+}) {
   Navigator.of(context).push<void>(
     MaterialPageRoute(
       builder: (ctx) => _LegalDocumentPage(title: title, body: body),
@@ -89,12 +95,20 @@ class _LegalDocumentPage extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.arrow_back_ios_new, size: 18, color: t.text),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new,
+                        size: 18,
+                        color: t.text,
+                      ),
                     ),
                     Expanded(
                       child: Text(
                         title,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: t.text),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: t.text,
+                        ),
                       ),
                     ),
                   ],
@@ -105,7 +119,11 @@ class _LegalDocumentPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                   child: Text(
                     body.trim(),
-                    style: TextStyle(fontSize: 13, height: 1.55, color: t.muted),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.55,
+                      color: t.muted,
+                    ),
                   ),
                 ),
               ),

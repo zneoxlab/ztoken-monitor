@@ -24,6 +24,8 @@ class SecureKeys {
   static const hubSecret = 'hub.secret'; // 自建 Hub 共享密钥
   static const userId = 'auth.user_id';
   static const userEmail = 'auth.user_email';
+  // 推送安装标识是“这次安装”的身份，不等同于桌面端/采集器 deviceId。
+  static const pushInstallationId = 'push.installation_id';
 }
 
 // prefs 降级键(加前缀避免与 settings 键冲突)。
@@ -34,6 +36,7 @@ class _PrefsKeys {
   static const hubSecret = 'fallback.hub.secret';
   static const userId = 'fallback.auth.user_id';
   static const userEmail = 'fallback.auth.user_email';
+  static const pushInstallationId = 'fallback.push.installation_id';
 }
 
 // 单例封装:对外暴露读写/删除,屏蔽 FlutterSecureStorage 的 options 细节。
@@ -81,6 +84,8 @@ class SecureStorage {
         return _PrefsKeys.userId;
       case SecureKeys.userEmail:
         return _PrefsKeys.userEmail;
+      case SecureKeys.pushInstallationId:
+        return _PrefsKeys.pushInstallationId;
       default:
         return 'fallback.$secureKey';
     }
@@ -106,6 +111,10 @@ class SecureStorage {
     await _write(SecureKeys.userEmail, email);
   }
 
+  Future<String?> readPushInstallationId() => _read(SecureKeys.pushInstallationId);
+  Future<void> writePushInstallationId(String value) =>
+      _write(SecureKeys.pushInstallationId, value);
+
   // 登录成功后一次性写入全部凭证。
   Future<void> writeSession({
     required String accessToken,
@@ -130,7 +139,13 @@ class SecureStorage {
   // 登出/续期失败:清全部凭证(secure + prefs 降级副本),回登录页。
   Future<void> clearAll() async {
     try {
-      await _storage.deleteAll();
+      // 不删 pushInstallationId：它标识本次安装，登出后仍应由下一账户
+      // 复用并重新绑定，避免同一设备遗留多条安装记录。
+      await _storage.delete(key: SecureKeys.accessToken);
+      await _storage.delete(key: SecureKeys.refreshToken);
+      await _storage.delete(key: SecureKeys.hubSecret);
+      await _storage.delete(key: SecureKeys.userId);
+      await _storage.delete(key: SecureKeys.userEmail);
     } catch (e) {
       debugPrint('[secure] deleteAll 失败(忽略): $e');
     }

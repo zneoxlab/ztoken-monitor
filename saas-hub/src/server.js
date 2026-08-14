@@ -15,6 +15,8 @@ const { createSseRegistry } = require('./sse');
 const { createRequireAuth } = require('./auth');
 const { createAuthRoutes } = require('./routes/auth');
 const { createApiRoutes } = require('./routes/api');
+const { createPushTokenCrypto } = require('./pushTokenCrypto');
+const { createPushWorkerRuntime, runWorkerLoop } = require('./push-worker');
 
 // 带可配置 CORS origin 的 sendJson（SaaS 场景需收紧来源）
 function createSendJson(corsOrigin) {
@@ -34,12 +36,22 @@ function createSendJson(corsOrigin) {
   };
 }
 
-function createServer(config) {
+function createServer(config, { logger = console } = {}) {
   const pool = db.createPool(config.mysql);
   const sseRegistry = createSseRegistry();
-  const hub = createHub({ pool, db, sseRegistry, staleAfterMs: config.staleAfterMs });
+  // 空密钥允许测试和“暂未配置推送”的部署继续运行；注册接口会明确返回
+  // push_not_configured，绝不会降级为保存明文 token。
+  const pushTokenCrypto = createPushTokenCrypto(config.push?.tokenEncryptionKey);
+  const hub = createHub({ pool, db, sseRegistry, staleAfterMs: config.staleAfterMs, pushTokenCrypto });
   const sendJson = createSendJson(config.corsOrigin);
   const requireAuth = createRequireAuth({ secret: config.jwtSecret });
+  const pushWorkerState = {
+    status: 'disabled',
+    providers: [],
+    runtime: null,
+    controller: null,
+    loopPromise: null
+  };
 
   const authRoutes = createAuthRoutes({
     pool,
@@ -55,7 +67,8 @@ function createServer(config) {
     hub,
     db,
     sseRegistry,
-    sendJson
+    sendJson,
+    pushTokenCrypto
   });
 
   async function handleRequest(req, res) {
@@ -119,26 +132,87 @@ function createServer(config) {
     });
   });
 
+  function hasPushProviderConfig() {
+    const pushConfig = config.push || {};
+    const apns = pushConfig.apns || {};
+    return Boolean(
+      pushConfig.fcm?.serviceAccountFile
+      || apns.keyFile
+      || apns.keyId
+      || apns.teamId
+    );
+  }
+
+  async function startPushWorker() {
+    const pushConfig = config.push || {};
+    // 未配置推送凭证时保持现有 Hub 行为，不让配额推送成为 HTTP 服务的启动门槛。
+    if (!pushConfig.tokenEncryptionKey && !hasPushProviderConfig()) return;
+    if (!pushConfig.tokenEncryptionKey || !hasPushProviderConfig()) {
+      pushWorkerState.status = 'misconfigured';
+      logger.warn?.('[push-worker] 配置不完整，已跳过启动；HTTP Hub 仍正常提供服务');
+      return;
+    }
+    try {
+      const runtime = createPushWorkerRuntime(config, {
+        pool,
+        logger
+      });
+      const controller = new AbortController();
+      pushWorkerState.status = 'running';
+      pushWorkerState.providers = runtime.providers;
+      pushWorkerState.runtime = runtime;
+      pushWorkerState.controller = controller;
+      // Worker 与 HTTP 共用此进程和连接池；这里只启动后台循环，不阻塞
+      // server.listen() 返回，也不需要额外的 systemd/docker service。
+      pushWorkerState.loopPromise = runWorkerLoop(runtime, {
+        pollIntervalMs: pushConfig.pollIntervalMs,
+        signal: controller.signal,
+        logger
+      }).catch((error) => {
+        pushWorkerState.status = 'error';
+        logger.error?.(`[push-worker] 后台循环退出: ${error.message}`);
+      });
+      logger.info?.(`[push-worker] 已随 Hub 启动 (${runtime.providers.join(', ')})`);
+    } catch (error) {
+      pushWorkerState.status = 'error';
+      logger.error?.(`[push-worker] 启动失败，HTTP Hub 继续运行: ${error.message}`);
+    }
+  }
+
+  async function stopPushWorker() {
+    pushWorkerState.controller?.abort();
+    if (pushWorkerState.loopPromise) await pushWorkerState.loopPromise;
+    if (pushWorkerState.runtime) await pushWorkerState.runtime.close();
+    pushWorkerState.controller = null;
+    pushWorkerState.loopPromise = null;
+    pushWorkerState.runtime = null;
+    if (pushWorkerState.status === 'running') pushWorkerState.status = 'stopped';
+  }
+
   function start() {
     return new Promise((resolve, reject) => {
       const onError = (err) => { server.off('listening', onListening); reject(err); };
-      const onListening = () => { server.off('error', onError); resolve(); };
+      const onListening = () => {
+        server.off('error', onError);
+        startPushWorker().then(resolve, reject);
+      };
       server.once('error', onError);
       server.once('listening', onListening);
       server.listen(config.port, config.host);
     });
   }
 
-  function stop() {
-    return new Promise((resolve) => {
-      sseRegistry.closeAll();
-      server.close(() => {
-        pool.end().then(() => resolve()).catch(() => resolve());
-      });
+  async function stop() {
+    sseRegistry.closeAll();
+    await stopPushWorker();
+    await new Promise((resolve) => {
+      if (!server.listening) return resolve();
+      server.close(() => resolve());
     });
+    await pool.end().catch(() => {});
   }
 
-  return { start, stop, server, pool, hub, sseRegistry };
+  return { start, stop, server, pool, hub, sseRegistry, pushWorker: pushWorkerState };
 }
 
 // 启动入口
@@ -148,8 +222,17 @@ if (require.main === module) {
     console.error('Error: SAAS_HUB_JWT_SECRET must be set. Generate with: openssl rand -hex 32');
     process.exit(1);
   }
-  const { start } = createServer(config);
-  start().then(() => {
+  const serverInfo = createServer(config);
+  let stopping = false;
+  const shutdown = async (signal) => {
+    if (stopping) return;
+    stopping = true;
+    console.log(`SaaS Hub stopping (${signal})`);
+    await serverInfo.stop();
+  };
+  process.once('SIGINT', () => { shutdown('SIGINT').catch((error) => console.error(error)); });
+  process.once('SIGTERM', () => { shutdown('SIGTERM').catch((error) => console.error(error)); });
+  serverInfo.start().then(() => {
     console.log(`SaaS Hub listening on http://${config.host}:${config.port}`);
     console.log(`MySQL database: ${config.mysql.database || config.mysql.connectionUri}`);
   }).catch((err) => {

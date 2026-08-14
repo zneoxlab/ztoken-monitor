@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/limits/limit_display_mode.dart';
 import '../../../core/limits/limit_presentation.dart';
 import '../../../core/models/stats.dart';
 import '../../../theme/glass_material.dart';
@@ -16,11 +17,15 @@ class LimitsProviderCard extends StatelessWidget {
     required this.provider,
     required this.staleAfterMs,
     required this.limitsUpdatedAt,
+    required this.displayMode,
+    this.notificationSettings,
   });
 
   final LimitsProvider provider;
   final int staleAfterMs;
   final String limitsUpdatedAt;
+  final LimitDisplayMode displayMode;
+  final Widget? notificationSettings;
 
   bool get _stale {
     if (limitsUpdatedAt.isEmpty) return false;
@@ -59,7 +64,11 @@ class LimitsProviderCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               limitProviderDisplayName(p.provider),
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.text),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: t.text,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -67,7 +76,10 @@ class LimitsProviderCard extends StatelessWidget {
                           if (planText.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.42),
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.sizeOf(context).width * 0.42,
+                              ),
                               child: Text(
                                 planText,
                                 style: TextStyle(
@@ -92,7 +104,10 @@ class LimitsProviderCard extends StatelessWidget {
                       ),
                       if (metaLine.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(metaLine, style: TextStyle(fontSize: 10, color: t.faint)),
+                        Text(
+                          metaLine,
+                          style: TextStyle(fontSize: 10, color: t.faint),
+                        ),
                       ],
                     ],
                   ),
@@ -105,13 +120,17 @@ class LimitsProviderCard extends StatelessWidget {
             ),
             if (notOk) ...[
               const SizedBox(height: 10),
-              Text(limitStatusDetail(p.status), style: TextStyle(fontSize: 11.5, color: t.faint)),
+              Text(
+                limitStatusDetail(p.status),
+                style: TextStyle(fontSize: 11.5, color: t.faint),
+              ),
             ] else ...[
               const SizedBox(height: 8),
               for (var i = 0; i < p.windows.length; i++) ...[
                 if (i > 0) const SizedBox(height: 10),
-                LimitsWindowRow(window: p.windows[i]),
+                LimitsWindowRow(window: p.windows[i], displayMode: displayMode),
               ],
+              if (notificationSettings != null) notificationSettings!,
             ],
           ],
         ),
@@ -121,9 +140,14 @@ class LimitsProviderCard extends StatelessWidget {
 }
 
 class LimitsWindowRow extends StatelessWidget {
-  const LimitsWindowRow({super.key, required this.window});
+  const LimitsWindowRow({
+    super.key,
+    required this.window,
+    required this.displayMode,
+  });
 
   final LimitsWindow window;
+  final LimitDisplayMode displayMode;
 
   @override
   Widget build(BuildContext context) {
@@ -142,14 +166,18 @@ class LimitsWindowRow extends StatelessWidget {
             Flexible(
               child: Text(
                 title,
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: t.text),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: t.text,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 8),
             Text(
-              limitWindowValueText(w),
+              limitWindowValueText(w, displayMode: displayMode),
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
@@ -185,9 +213,14 @@ class LimitsWindowRow extends StatelessWidget {
 }
 
 class LimitsHomeAccountBlock extends StatelessWidget {
-  const LimitsHomeAccountBlock({super.key, required this.provider});
+  const LimitsHomeAccountBlock({
+    super.key,
+    required this.provider,
+    required this.displayMode,
+  });
 
   final LimitsProvider provider;
+  final LimitDisplayMode displayMode;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +238,11 @@ class LimitsHomeAccountBlock extends StatelessWidget {
             Expanded(
               child: Text(
                 limitHomeAccountTitle(provider),
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: t.text),
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: t.text,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -227,7 +264,10 @@ class LimitsHomeAccountBlock extends StatelessWidget {
                   for (final w in windows)
                     SizedBox(
                       width: cellWidth,
-                      child: _HomeLimitWindowCell(window: w),
+                      child: _HomeLimitWindowCell(
+                        window: w,
+                        displayMode: displayMode,
+                      ),
                     ),
                 ],
               );
@@ -240,14 +280,15 @@ class LimitsHomeAccountBlock extends StatelessWidget {
 }
 
 class _HomeLimitWindowCell extends StatelessWidget {
-  const _HomeLimitWindowCell({required this.window});
+  const _HomeLimitWindowCell({required this.window, required this.displayMode});
 
   final LimitsWindow window;
+  final LimitDisplayMode displayMode;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<AppThemeTokens>()!;
-    final value = limitHomeWindowValue(window);
+    final value = limitHomeWindowValue(window, displayMode: displayMode);
     final reset = limitHomeResetText(window);
     final tone = limitHomeValueTone(window);
     final valueColor = switch (tone) {
@@ -293,7 +334,10 @@ class _HomeLimitWindowCell extends StatelessWidget {
         ],
         if (limitWindowShouldShowMeter(window)) ...[
           const SizedBox(height: 4),
-          MeterBar(usedPercent: limitWindowMeterPercent(window).toDouble(), compact: true),
+          MeterBar(
+            usedPercent: limitWindowMeterPercent(window).toDouble(),
+            compact: true,
+          ),
         ],
       ],
     );

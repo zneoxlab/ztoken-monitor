@@ -102,3 +102,31 @@ tasks.matching {
 flutter {
     source = "../.."
 }
+
+// Google Services 插件会把 google-services.json 转换成 Firebase 初始化所需资源。
+// 根配置适用于所有 flavor；也支持 src/<flavor>/、src/<buildType>/ 和
+// src/<flavor><BuildType>/。没有任一配置时不应用插件，普通构建仍可运行，
+// RemotePushStore 会将远程推送安全降级为 unavailable。
+val googleServicesConfigCandidates = listOf(
+    "google-services.json",
+    "src/website/google-services.json",
+    "src/store/google-services.json",
+    "src/debug/google-services.json",
+    "src/release/google-services.json",
+    "src/profile/google-services.json",
+    "src/websiteDebug/google-services.json",
+    "src/websiteRelease/google-services.json",
+    "src/websiteProfile/google-services.json",
+    "src/storeDebug/google-services.json",
+    "src/storeRelease/google-services.json",
+    "src/storeProfile/google-services.json",
+)
+if (googleServicesConfigCandidates.any { file(it).isFile }) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+dependencies {
+    // Firebase 配置资源由上方按需应用的 Google Services 插件生成。
+    implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
+    implementation("com.google.firebase:firebase-messaging")
+}

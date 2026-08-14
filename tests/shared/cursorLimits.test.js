@@ -39,7 +39,9 @@ test('fetchCursorLimits returns ok with Cursor billing dimensions when probe suc
   assert.equal(result.status, 'ok');
   assert.equal(result.provider, 'cursor');
   assert.equal(result.source, 'web');
+  assert.equal(result.accountIdentity, result.accountKey);
   assert.deepEqual(result.windows.map((window) => window.label), ['Total', 'Auto', 'API', 'Credits']);
+  assert.deepEqual(result.windows.map((window) => window.windowId), ['total', 'auto', 'api', 'on-demand']);
   assert.equal(result.windows[0].kind, 'billing');
   assert.equal(result.windows[0].usedPercent, 70);
   assert.equal(result.windows[0].used, 7);

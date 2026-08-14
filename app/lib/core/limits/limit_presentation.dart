@@ -1,5 +1,6 @@
 import '../format/formatters.dart';
 import '../models/stats.dart';
+import 'limit_display_mode.dart';
 
 bool isConfiguredLimitProvider(LimitsProvider provider) {
   final status = provider.status.trim().toLowerCase();
@@ -94,7 +95,10 @@ String limitProviderMetaLine(LimitsProvider provider) {
   final parts = <String>[];
   final updated = formatLimitUpdatedAge(provider.updatedAt);
   if (updated.isNotEmpty) parts.add(updated);
-  final source = limitSourceLabel(provider.source, providerId: provider.provider);
+  final source = limitSourceLabel(
+    provider.source,
+    providerId: provider.provider,
+  );
   if (source.isNotEmpty) parts.add(source);
   return parts.join(' · ');
 }
@@ -221,7 +225,8 @@ String limitWindowResetText(LimitsWindow window, {DateTime? now}) {
     final resetAt = DateTime.tryParse(window.resetsAt);
     if (resetAt != null) {
       final current = now ?? DateTime.now();
-      final isToday = resetAt.year == current.year &&
+      final isToday =
+          resetAt.year == current.year &&
           resetAt.month == current.month &&
           resetAt.day == current.day;
       final left = '还有 ${formatLimitDurationZh(remainingMs)}';
@@ -276,7 +281,8 @@ List<LimitsWindow> sortedLimitWindows(List<LimitsWindow> windows) {
 // 首页配额窗口:对照桌面 homeLimitAccounts,按优先级排序后最多 2 个(Cursor 仅 Total+Auto)。
 bool limitHomeWindowHasData(LimitsWindow window) {
   if (window.isCredits) {
-    return window.remaining != null || (window.detail?.trim().isNotEmpty ?? false);
+    return window.remaining != null ||
+        (window.detail?.trim().isNotEmpty ?? false);
   }
   if (window.isSpend) return window.used != null || window.limit != null;
   if (window.usedPercent > 0 || window.remainingPercent > 0) return true;
@@ -287,7 +293,9 @@ bool limitHomeWindowHasData(LimitsWindow window) {
 }
 
 List<LimitsWindow> limitHomeWindows(List<LimitsWindow> windows) {
-  return sortedLimitWindows(windows.where(limitHomeWindowHasData).toList()).take(2).toList();
+  return sortedLimitWindows(
+    windows.where(limitHomeWindowHasData).toList(),
+  ).take(2).toList();
 }
 
 int limitWindowRemainingPercent(LimitsWindow window) {
@@ -295,12 +303,22 @@ int limitWindowRemainingPercent(LimitsWindow window) {
   return (100 - window.usedPercent).clamp(0, 100);
 }
 
-// 首页配额格:对照桌面 formatHomeLimitWindowValue,显示剩余百分比。
-String limitHomeWindowValue(LimitsWindow window) {
-  if (window.isCredits) return limitWindowValueText(window);
-  if (window.isSpend) return limitWindowValueText(window);
+// 首页配额格:对照桌面 formatHomeLimitWindowValue,显示剩余/已用百分比。
+String limitHomeWindowValue(
+  LimitsWindow window, {
+  LimitDisplayMode displayMode = LimitDisplayMode.remaining,
+}) {
+  if (window.isCredits) {
+    return limitWindowValueText(window, displayMode: displayMode);
+  }
+  if (window.isSpend) {
+    return limitWindowValueText(window, displayMode: displayMode);
+  }
   final remaining = limitWindowRemainingPercent(window);
-  return '剩余 $remaining%';
+  final value = displayMode == LimitDisplayMode.used
+      ? 100 - remaining
+      : remaining;
+  return '${limitDisplayModeLabel(displayMode)} $value%';
 }
 
 // 首页重置文案:紧凑 "重置 1天 15小时"(对照桌面 formatReset)。
@@ -333,7 +351,10 @@ LimitHomeValueTone limitHomeValueTone(LimitsWindow window) {
 }
 
 int limitWindowMeterPercent(LimitsWindow window) {
-  if (window.isSpend && window.limit != null && window.limit! > 0 && window.used != null) {
+  if (window.isSpend &&
+      window.limit != null &&
+      window.limit! > 0 &&
+      window.used != null) {
     return ((window.used! / window.limit!) * 100).round().clamp(0, 100);
   }
   return window.usedPercent;
@@ -345,7 +366,11 @@ bool limitWindowShouldShowMeter(LimitsWindow window) {
   return !window.isCredits;
 }
 
-String limitWindowValueText(LimitsWindow window) {
+String limitWindowValueText(
+  LimitsWindow window, {
+  // 配额页历史上显示已用百分比,保留默认值以兼容直接调用方；页面会传入用户选择。
+  LimitDisplayMode displayMode = LimitDisplayMode.used,
+}) {
   if (window.isCredits) {
     if (window.remaining == null) return '—';
     final cur = (window.currency ?? '').trim();
@@ -356,7 +381,15 @@ String limitWindowValueText(LimitsWindow window) {
     if (window.used == null) return '—';
     final cur = (window.currency ?? '').trim();
     final suffix = cur.isEmpty ? '' : ' $cur';
-    return '已耗 ${window.used!.toStringAsFixed(2)}$suffix';
+    if (displayMode == LimitDisplayMode.remaining &&
+        window.limit != null &&
+        window.limit! >= 0) {
+      final left = (window.limit! - window.used!).clamp(0, window.limit!);
+      return '剩余 ${left.toStringAsFixed(2)}$suffix';
+    }
+    return '已用 ${window.used!.toStringAsFixed(2)}$suffix';
   }
-  return '${window.usedPercent}%';
+  final value = limitWindowRemainingPercent(window);
+  final percent = displayMode == LimitDisplayMode.used ? 100 - value : value;
+  return '${limitDisplayModeLabel(displayMode)} $percent%';
 }

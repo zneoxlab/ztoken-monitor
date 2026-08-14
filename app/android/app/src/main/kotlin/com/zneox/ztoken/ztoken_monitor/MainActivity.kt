@@ -1,10 +1,19 @@
 package com.zneox.ztoken.ztoken_monitor
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -17,29 +26,50 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL_NAME = "com.zneox.ztoken_monitor/app_update"
         private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
         private const val HOME_WIDGET_CHANNEL = "com.zneox.ztoken_monitor/home_widget"
+        private const val NOTIFICATION_CHANNEL = "quota_status"
+        private const val NOTIFICATION_CHANNEL_NAME = "配额提醒"
+        private const val NOTIFICATION_PERMISSION_REQUEST = 4101
+        private const val NOTIFICATION_CHANNEL_NAME_DART =
+            "com.zneox.ztoken_monitor/notifications"
     }
 
     private var homeWidgetChannel: MethodChannel? = null
     private var pendingWidgetAction: Map<String, Any>? = null
+    private var notificationChannel: MethodChannel? = null
+    private var pendingNotificationPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // FCM 在后台由系统展示 notification payload；首次取得令牌前先创建
+        // manifest 指定的默认 channel，避免进程被杀时回落到不一致的频道。
+        RemotePushStore.ensureNotificationChannel(this)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL_NAME,
         ).setMethodCallHandler(::handleUpdateCall)
         rememberWidgetAction(intent)
+        RemotePushStore.rememberOpenedEvent(this, intent)
         homeWidgetChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             HOME_WIDGET_CHANNEL,
         ).also { channel ->
             channel.setMethodCallHandler(::handleHomeWidgetCall)
         }
+        notificationChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            NOTIFICATION_CHANNEL_NAME_DART,
+        ).also { channel ->
+            channel.setMethodCallHandler(::handleNotificationCall)
+            RemotePushBridge.attach(channel)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        RemotePushStore.rememberOpenedEvent(this, intent)?.let { event ->
+            notificationChannel?.invokeMethod("pushNotificationOpened", event)
+        }
         val action = widgetAction(intent) ?: return
         val channel = homeWidgetChannel
         if (channel == null) {
@@ -69,6 +99,147 @@ class MainActivity : FlutterActivity() {
             }
             else -> result.notImplemented()
         }
+    }
+
+    private fun handleNotificationCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "requestPermission" -> requestNotificationPermission(result)
+            "getNotificationPermissionStatus" -> result.success(areNotificationsEnabled())
+            "getRemotePushToken" -> getRemotePushToken(result)
+            "getInitialPushEvent" -> result.success(RemotePushStore.takeOpenedEvent(this))
+            "showQuotaNotification" -> {
+                @Suppress("UNCHECKED_CAST")
+                val payload = call.arguments as? Map<Any?, Any?>
+                if (payload == null) {
+                    result.error("invalid_arguments", "通知内容无效", null)
+                    return
+                }
+                showQuotaNotification(payload)
+                result.success(null)
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    private fun requestNotificationPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            result.success(areNotificationsEnabled())
+            return
+        }
+        if (pendingNotificationPermissionResult != null) {
+            result.success(false)
+            return
+        }
+        pendingNotificationPermissionResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST,
+        )
+    }
+
+    private fun getRemotePushToken(result: MethodChannel.Result) {
+        if (!RemotePushStore.isFirebaseConfigured(this)) {
+            result.success(null)
+            return
+        }
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                val token = if (task.isSuccessful) {
+                    task.result?.trim().takeUnless { it.isNullOrEmpty() }
+                } else {
+                    null
+                }
+                if (task.isSuccessful && token != null) {
+                    RemotePushStore.saveToken(this, token)
+                    result.success(RemotePushStore.tokenPayload(token))
+                } else {
+                    result.success(RemotePushStore.savedToken(this)?.let(RemotePushStore::tokenPayload))
+                }
+            }
+        } catch (_: Exception) {
+            result.success(RemotePushStore.savedToken(this)?.let(RemotePushStore::tokenPayload))
+        }
+    }
+
+    private fun areNotificationsEnabled(): Boolean =
+        NotificationManagerCompat.from(this).areNotificationsEnabled()
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != NOTIFICATION_PERMISSION_REQUEST) return
+        val result = pendingNotificationPermissionResult ?: return
+        pendingNotificationPermissionResult = null
+        result.success(
+            grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED &&
+                areNotificationsEnabled(),
+        )
+    }
+
+    override fun onDestroy() {
+        RemotePushBridge.detach(notificationChannel)
+        notificationChannel = null
+        super.onDestroy()
+    }
+
+    private fun showQuotaNotification(payload: Map<Any?, Any?>) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val title = payload["title"] as? String ?: return
+        val body = payload["body"] as? String ?: return
+        if (title.isBlank() || body.isBlank()) return
+        val tag = (payload["tag"] as? String).orEmpty().ifBlank { "quota-status" }
+
+        val manager = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    NOTIFICATION_CHANNEL,
+                    NOTIFICATION_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+            )
+        }
+
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val pendingIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                tag.hashCode(),
+                it.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .apply {
+                if (pendingIntent != null) setContentIntent(pendingIntent)
+            }
+            .build()
+        manager.notify(tag.hashCode(), notification)
     }
 
     private fun rememberWidgetAction(intent: Intent?) {

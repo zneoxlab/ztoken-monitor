@@ -35,6 +35,31 @@ function resolveJwtRefreshExpiresIn(env) {
   return String(env.SAAS_HUB_REFRESH_EXPIRES_IN || '90d').trim() || '90d';
 }
 
+function positiveInteger(value, fallback, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(parsed)));
+}
+
+function resolvePushConfig(env) {
+  return {
+    tokenEncryptionKey: String(env.SAAS_HUB_PUSH_TOKEN_ENCRYPTION_KEY || '').trim(),
+    pollIntervalMs: positiveInteger(env.SAAS_HUB_PUSH_POLL_INTERVAL_MS, 5_000, { min: 250, max: 60_000 }),
+    batchSize: positiveInteger(env.SAAS_HUB_PUSH_BATCH_SIZE, 50, { min: 1, max: 500 }),
+    leaseMs: positiveInteger(env.SAAS_HUB_PUSH_LEASE_MS, 60_000, { min: 5_000, max: 10 * 60_000 }),
+    maxAttempts: positiveInteger(env.SAAS_HUB_PUSH_MAX_ATTEMPTS, 8, { min: 1, max: 20 }),
+    fcm: {
+      serviceAccountFile: String(env.SAAS_HUB_FCM_SERVICE_ACCOUNT_FILE || '').trim()
+    },
+    apns: {
+      keyFile: String(env.SAAS_HUB_APNS_KEY_FILE || '').trim(),
+      keyId: String(env.SAAS_HUB_APNS_KEY_ID || '').trim(),
+      teamId: String(env.SAAS_HUB_APNS_TEAM_ID || '').trim(),
+      bundleId: String(env.SAAS_HUB_APNS_BUNDLE_ID || 'com.zneox.ztoken.ztokenMonitor').trim()
+    }
+  };
+}
+
 function loadConfig(env = process.env, argv = process.argv.slice(2)) {
   // 加载 saas-hub 自己的 .env（dotenv 从 saas-hub/node_modules 解析）
   dotenv.config({ path: path.join(__dirname, '..', '.env'), quiet: true });
@@ -57,9 +82,17 @@ function loadConfig(env = process.env, argv = process.argv.slice(2)) {
     passwordMinLength,
     corsOrigin,
     mysql: { ...resolveMysqlConfig(env), connectionLimit: mysqlConnectionLimit },
+    push: resolvePushConfig(env),
     // schema.sql 路径，供 migrate 脚本使用
     schemaPath: path.join(__dirname, '..', 'sql', 'schema.sql')
   };
 }
 
-module.exports = { loadConfig, resolveMysqlConfig, resolveJwtExpiresIn, resolveJwtRefreshExpiresIn };
+module.exports = {
+  loadConfig,
+  resolveMysqlConfig,
+  resolveJwtExpiresIn,
+  resolveJwtRefreshExpiresIn,
+  resolvePushConfig,
+  positiveInteger
+};
