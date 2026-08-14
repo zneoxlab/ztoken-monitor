@@ -95,6 +95,16 @@ SAAS_HUB_MYSQL_CONNECTION_LIMIT=10
 
 SAAS_HUB_STALE_AFTER_MS=600000
 SAAS_HUB_PASSWORD_MIN_LENGTH=8
+
+# 与 JWT 密钥分开再生成一次：openssl rand -hex 32
+SAAS_HUB_PUSH_TOKEN_ENCRYPTION_KEY=粘贴另一份随机密钥
+
+# Android FCM 服务账号 JSON、Apple APNs .p8 的服务器本地路径
+SAAS_HUB_FCM_SERVICE_ACCOUNT_FILE=/opt/ztoken-monitor/secrets/firebase-service-account.json
+SAAS_HUB_APNS_KEY_FILE=/opt/ztoken-monitor/secrets/AuthKey_XXXXXXXXXX.p8
+SAAS_HUB_APNS_KEY_ID=XXXXXXXXXX
+SAAS_HUB_APNS_TEAM_ID=XXXXXXXXXX
+SAAS_HUB_APNS_BUNDLE_ID=com.zneox.ztoken.ztokenMonitor
 ```
 
 确认 `.env` 权限：
@@ -116,6 +126,8 @@ npm run migrate
 ```
 Database 'token_monitor_saas' ensured.
 Schema applied from schema.sql.
+Migration applied: 001_quota_push.sql (... statements).
+Migration applied: 002_quota_push_runtime_columns.js (... statements).
 ```
 
 ## 6. 启动服务（前台，先验证）
@@ -293,11 +305,20 @@ sudo systemctl start saas-hub
 sudo systemctl status saas-hub
 ```
 
-查日志：
+`npm start` 启动的现有 `saas-hub.service` 会在同一个 Node 进程内启动后台 Push Worker，共用同一个 MySQL 连接池，不需要新增 systemd 服务。配置好 `.env` 后重启现有服务即可：
+
+```bash
+sudo systemctl restart saas-hub
+sudo systemctl status saas-hub
+```
+
+启动日志会出现 `push-worker 已随 Hub 启动`。推送日志和 HTTP 日志在同一个服务中查看：
 
 ```bash
 sudo journalctl -u saas-hub -f
 ```
+
+凭证要求：Firebase 项目注册 Android 包名 `com.zneox.ztoken.ztoken_monitor`，服务端使用 Service Account 调 FCM HTTP v1；iOS App ID `com.zneox.ztoken.ztokenMonitor` 启用 Push Notifications，并为服务器配置 `.p8`、Key ID、Team ID。`.env`、Service Account 与 `.p8` 权限应限制给运行用户，轮换 `SAAS_HUB_PUSH_TOKEN_ENCRYPTION_KEY` 前必须设计旧 keyVersion 的解密窗口，不能直接替换后丢弃旧密钥。
 
 ## 9. 反向代理（可选，生产用 HTTPS）
 

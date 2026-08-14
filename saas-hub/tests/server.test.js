@@ -27,7 +27,8 @@ test.before(async () => {
     // 跑 schema
     const fs = require('node:fs');
     const schema = fs.readFileSync(config.schemaPath, 'utf8');
-    for (const stmt of schema.split(';').map((s) => s.trim()).filter((s) => s && !s.startsWith('--'))) {
+    const { splitSqlStatements } = require('../scripts/migrate');
+    for (const stmt of splitSqlStatements(schema)) {
       await pool.query(stmt);
     }
     config.jwtSecret = config.jwtSecret || 'test-secret-do-not-use-in-prod';

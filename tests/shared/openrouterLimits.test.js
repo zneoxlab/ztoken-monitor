@@ -157,6 +157,7 @@ test('zero total credits remains a real empty balance meter', async () => {
   assert.equal(provider.balance.amount, 0);
   assert.deepEqual(provider.windows, [{
     kind: 'billing',
+    windowId: 'credits',
     metric: 'credits',
     label: 'Credits',
     used: 0,
@@ -235,6 +236,7 @@ test('blank and absent API numbers stay unknown instead of becoming zero-value m
 test('a key limit can derive usage from a real remaining value', () => {
   assert.deepEqual(keyLimitWindow({ limit: 30, limit_remaining: 18 }), {
     kind: 'billing',
+    windowId: 'api-key-limit',
     label: 'API key limit',
     used: 12,
     limit: 30,

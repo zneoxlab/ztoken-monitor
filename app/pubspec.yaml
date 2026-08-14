@@ -29,8 +29,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   flutter_secure_storage_ohos: ^1.0.0
 
-  # 本地通知(配额阈值提醒):M2 再接。勿用 SIG git 版作默认依赖——其引用
-  # TargetPlatform.ohos,标准 Flutter 无法编 Android;鸿蒙构建前再单独接入 ohos 实现。
+  # 本地通知通过 MethodChannel 接入 Android/iOS;鸿蒙/Web 未注册原生通道时安全降级。
 
 dev_dependencies:
   flutter_test:

@@ -38,6 +38,7 @@ docker run -d \
   -e SAAS_HUB_MYSQL_USER=tm_saas \
   -e SAAS_HUB_MYSQL_PASSWORD=你的强密码 \
   -e SAAS_HUB_MYSQL_DATABASE=token_monitor_saas \
+  -e SAAS_HUB_PUSH_TOKEN_ENCRYPTION_KEY=固定的另一份32字节十六进制密钥 \
   ztoken-monitor-saas-hub
 ```
 
@@ -57,7 +58,34 @@ docker exec -it saas-hub node scripts/migrate.js
 
 或者构建时就把迁移跑进镜像（一劳永逸，但每次重建镜像会重跑，幂等所以安全）——可选，在 Dockerfile 末尾加 `RUN node scripts/migrate.js || true`（需要构建时就能连到 MySQL，一般不用）。
 
-推荐做法：启动一次后用 `docker exec` 跑迁移，只跑一次。
+推荐做法：每次部署新版本后都用 `docker exec` 跑迁移。迁移器会记录已应用版本并自动跳过，不能只在首次建库时运行，否则后续新增表或列不会落库。
+
+## 3.1 配置同一个 Hub 容器内的 Push Worker
+
+HTTP API 和 Push Worker 由同一个 `node src/server.js` 进程启动，共用容器、MySQL 连接池和 `.env`。敏感凭证仍以只读 volume 挂载，不放进镜像：
+
+```bash
+docker run -d \
+  --name saas-hub \
+  --restart unless-stopped \
+  --add-host=host.docker.internal:host-gateway \
+  -p 8787:8787 \
+  -e SAAS_HUB_JWT_SECRET=固定的JWT密钥 \
+  -e SAAS_HUB_MYSQL_HOST=host.docker.internal \
+  -e SAAS_HUB_MYSQL_USER=tm_saas \
+  -e SAAS_HUB_MYSQL_PASSWORD=你的强密码 \
+  -e SAAS_HUB_MYSQL_DATABASE=token_monitor_saas \
+  -e SAAS_HUB_PUSH_TOKEN_ENCRYPTION_KEY=固定的另一份32字节十六进制密钥 \
+  -e SAAS_HUB_FCM_SERVICE_ACCOUNT_FILE=/run/secrets/firebase.json \
+  -e SAAS_HUB_APNS_KEY_FILE=/run/secrets/AuthKey.p8 \
+  -e SAAS_HUB_APNS_KEY_ID=XXXXXXXXXX \
+  -e SAAS_HUB_APNS_TEAM_ID=XXXXXXXXXX \
+  -v /宿主机安全目录/firebase.json:/run/secrets/firebase.json:ro \
+  -v /宿主机安全目录/AuthKey.p8:/run/secrets/AuthKey.p8:ro \
+  ztoken-monitor-saas-hub
+```
+
+只上线 Android 或 iOS 时可以仅配置对应 provider。没有推送密钥或 provider 时，HTTP Hub 仍会正常启动，只是不启动后台推送循环。
 
 ## 4. 测试接口
 
@@ -138,6 +166,14 @@ docker run -d ...  # 同第 2 步
 | `SAAS_HUB_STALE_AFTER_MS` | 600000 | 设备过期阈值 |
 | `SAAS_HUB_PASSWORD_MIN_LENGTH` | 8 | 密码最小长度 |
 | `SAAS_HUB_CORS_ORIGIN` | * | CORS 来源 |
+| `SAAS_HUB_PUSH_TOKEN_ENCRYPTION_KEY` | 必填（启用推送时） | 加密设备 token；与 JWT 密钥分开并在 HTTP/Worker 间保持一致 |
+| `SAAS_HUB_FCM_SERVICE_ACCOUNT_FILE` | 空 | Firebase Service Account JSON 的容器内路径 |
+| `SAAS_HUB_APNS_KEY_FILE` | 空 | Apple APNs `.p8` 的容器内路径 |
+| `SAAS_HUB_APNS_KEY_ID` / `SAAS_HUB_APNS_TEAM_ID` | 空 | APNs token 认证标识 |
+| `SAAS_HUB_APNS_BUNDLE_ID` | `com.zneox.ztoken.ztokenMonitor` | iOS topic |
+| `SAAS_HUB_PUSH_POLL_INTERVAL_MS` | 5000 | Outbox 空闲轮询间隔 |
+| `SAAS_HUB_PUSH_BATCH_SIZE` | 50 | 单批投递数 |
+| `SAAS_HUB_PUSH_MAX_ATTEMPTS` | 8 | 最大投递尝试数 |
 
 ## 常见问题
 

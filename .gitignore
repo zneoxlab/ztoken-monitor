@@ -28,3 +28,11 @@ docs/BUILD-PACKAGING.md
 .idea/
 # 部署脚本（服务器本地使用，不随仓库管理）
 deploy-saas-hub.sh
+# 移动系统推送凭证：只允许本机/CI secret 注入，绝不提交仓库。
+app/android/app/google-services.json
+app/android/app/src/*/google-services.json
+app/ios/Runner/GoogleService-Info.plist
+app/ios/Runner/AuthKey_*.p8
+saas-hub/secrets/
+saas-hub/*.p8
+saas-hub/*service-account*.json

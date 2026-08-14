@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/network/stats_repository.dart';
 import 'core/home_widget/home_widget_sync.dart';
+import 'core/notifications/notification_rules_repository.dart';
+import 'core/notifications/push_lifecycle.dart';
 import 'core/router.dart';
 import 'core/update/app_update_lifecycle.dart';
 import 'theme/app_theme.dart';
@@ -18,8 +22,11 @@ class ZtokenMonitorApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(sessionDataLifecycleProvider);
+    ref.watch(notificationRulesLifecycleProvider);
+    ref.watch(pushLifecycleAuthProvider);
     ref.watch(platformBrightnessProvider);
     final router = ref.watch(routerProvider);
+    unawaited(ref.read(pushLifecycleProvider).start(router));
     final themeMode = ref.watch(themeModeProvider);
     final lightTheme = ref.watch(lightThemeProvider);
     final darkTheme = ref.watch(darkThemeProvider);

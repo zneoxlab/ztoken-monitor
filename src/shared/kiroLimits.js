@@ -362,6 +362,7 @@ async function fetchKiroLimits(_options = {}, deps = {}) {
   if (parsed.hasMetrics) {
     windows.push({
       kind: 'billing',
+      windowId: 'credits',
       label: 'Credits',
       usedPercent: parsed.creditsPercent,
       used: parsed.creditsUsed,
@@ -375,6 +376,7 @@ async function fetchKiroLimits(_options = {}, deps = {}) {
       : null;
     windows.push({
       kind: 'billing',
+      windowId: 'bonus',
       label: 'Bonus',
       usedPercent: clampPercent((parsed.bonus.used / parsed.bonus.total) * 100),
       used: parsed.bonus.used,
@@ -389,6 +391,7 @@ async function fetchKiroLimits(_options = {}, deps = {}) {
   if (parsed.overage && (parsed.overage.estimatedCostUsd !== null || parsed.overage.creditsUsed !== null)) {
     windows.push({
       kind: 'billing',
+      windowId: 'overage',
       label: 'Overage',
       showMeter: false,
       used: parsed.overage.creditsUsed, // overage credits used

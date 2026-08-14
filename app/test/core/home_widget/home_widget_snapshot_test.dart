@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ztoken_monitor/core/format/formatters.dart';
 import 'package:ztoken_monitor/core/home_widget/home_widget_snapshot.dart';
+import 'package:ztoken_monitor/core/limits/limit_display_mode.dart';
 import 'package:ztoken_monitor/core/models/stats.dart';
 import 'package:ztoken_monitor/core/storage/prefs_storage.dart';
 import 'package:ztoken_monitor/theme/theme_mode.dart';
@@ -90,6 +91,21 @@ void main() {
     );
 
     expect(items.map((item) => item.providerId), ['codex', 'opencode']);
+  });
+
+  test('小组件配额文案支持已用模式,进度条继续表示已用填充', () {
+    final limits = LimitsAgg(
+      providers: [_provider('codex', 'codex-account', usedPercent: 53)],
+    );
+
+    final item = selectHomeWidgetQuotaItems(
+      limits,
+      displayMode: LimitDisplayMode.used,
+      now: now,
+    ).single;
+
+    expect(item.value, '已用 53%');
+    expect(item.meterPercent, 53);
   });
 
   test('余额型额度显示金额语义且不绘制百分比进度条', () {

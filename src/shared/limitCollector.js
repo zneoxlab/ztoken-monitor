@@ -692,6 +692,7 @@ function claudeFableWeeklyWindow(usage) {
     if (!/^fable$/i.test(displayName)) continue;
     return {
       kind: 'weekly',
+      windowId: 'weekly-fable',
       label: displayName,
       usedPercent: claudeUsageWindowUsedPercent(entry),
       resetsAt: valueFromAliases(entry, ['resets_at', 'resetsAt'])
@@ -749,6 +750,7 @@ function claudeUsageCreditsWindow(usage) {
 
   return {
     kind: 'billing',
+    windowId: 'usage-credits',
     // `spend` is the machine-readable role: a `billing` window alone cannot be
     // told apart from the Balance window, and renderers must not key off a
     // display label. Headline is money already consumed, not money remaining.
@@ -772,6 +774,7 @@ function mapClaudeUsageToProvider(usage, meta = {}) {
   if (session) {
     windows.push({
       kind: 'session',
+      windowId: 'five-hour',
       usedPercent: claudeUsageWindowUsedPercent(session),
       resetsAt: valueFromAliases(session, ['resets_at', 'resetsAt'])
     });
@@ -779,6 +782,7 @@ function mapClaudeUsageToProvider(usage, meta = {}) {
   if (weekly) {
     windows.push({
       kind: 'weekly',
+      windowId: 'seven-day',
       usedPercent: claudeUsageWindowUsedPercent(weekly),
       resetsAt: valueFromAliases(weekly, ['resets_at', 'resetsAt'])
     });
@@ -790,6 +794,7 @@ function mapClaudeUsageToProvider(usage, meta = {}) {
   return normalizeLimitProvider({
     provider: 'claude',
     accountKey: meta.accountKey || '',
+    accountIdentity: meta.accountIdentity || '',
     accountLabel: meta.accountLabel || '',
     accountName: meta.accountName || '',
     accountEmail: meta.accountEmail || '',
@@ -1029,6 +1034,7 @@ function claudeWebAccountIdentity(accountBody, organization) {
   );
   return {
     accountKey: hashKey('claude-account', stableIdentity),
+    accountIdentity: hashKey('claude-account-identity', stableIdentity),
     accountEmail,
     accountName,
     accountLabel
@@ -1411,6 +1417,7 @@ async function fetchClaudeWebLimits(cookie, deps = {}, options = {}) {
       ...provider.windows,
       {
         kind: 'billing',
+        windowId: 'prepaid-balance',
         metric: 'credits',
         label: 'Balance',
         remaining: balance.amount,
@@ -1455,6 +1462,7 @@ function claudeOauthAccountIdentity(profile) {
 
   return {
     accountKey: hashKey('claude-account', stableIdentity),
+    accountIdentity: hashKey('claude-account-identity', stableIdentity),
     accountEmail,
     accountName
   };
@@ -1744,6 +1752,7 @@ function cliWindow(kind, percentLeft, resetDescription, resetsAt, windowMinutes)
   if (percentLeft === null || percentLeft === undefined) return null;
   return {
     kind,
+    windowId: kind === 'session' ? 'five-hour' : 'seven-day',
     usedPercent: Math.max(0, Math.min(100, 100 - Number(percentLeft))),
     resetsAt,
     resetDescription,
@@ -2279,6 +2288,7 @@ function mapCodexRateLimitsToProvider(payload, meta = {}) {
     if (!window) continue;
     windows.push({
       kind: codexWindowKind(key, window),
+      windowId: key,
       usedPercent: window.usedPercent ?? window.used_percent,
       resetsAt: window.resetsAt ?? window.resets_at,
       windowMinutes: window.windowDurationMins ?? window.window_duration_mins
@@ -2287,6 +2297,7 @@ function mapCodexRateLimitsToProvider(payload, meta = {}) {
   return normalizeLimitProvider({
     provider: 'codex',
     accountKey: meta.accountKey || '',
+    accountIdentity: meta.accountIdentity || '',
     accountLabel: meta.accountLabel || codexAccountLabel(payload),
     accountName: meta.accountName || '',
     accountEmail: meta.accountEmail || payload.account?.email || '',
@@ -2875,6 +2886,13 @@ function resolvedCodexAccountKey(email, workspaceAccountId, fallbackSeed) {
   return codexAccountKeyFromSeed(fallbackSeed || normalizedEmail || normalizedWorkspaceAccountId);
 }
 
+function resolvedCodexAccountIdentity(email, workspaceAccountId) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedWorkspaceAccountId = String(workspaceAccountId || '').trim().toLowerCase();
+  if (!normalizedEmail || !normalizedWorkspaceAccountId) return '';
+  return hashKey('codex-identity', normalizedEmail, normalizedWorkspaceAccountId);
+}
+
 function managedCodexAccountKey(account, authIdentity = {}, resolvedEmail = '') {
   const email = String(resolvedEmail || authIdentity.email || account.email || '').trim().toLowerCase();
   const workspaceAccountId = String(
@@ -2910,6 +2928,10 @@ async function fetchManagedCodexAccountLimits(account, _options = {}, deps = {})
     const email = authIdentity.email || payload.account?.email || account.email;
     return mapCodexRateLimitsToProvider(payload, {
       accountKey: managedCodexAccountKey(account, authIdentity, email),
+      accountIdentity: resolvedCodexAccountIdentity(
+        email,
+        authIdentity.workspaceAccountId || authIdentity.providerAccountId || account.workspaceAccountId
+      ),
       accountEmail: email,
       accountLabel: account.accountLabel || codexAccountLabel(payload),
       accountName: account.workspaceLabel,
@@ -2923,6 +2945,10 @@ async function fetchManagedCodexAccountLimits(account, _options = {}, deps = {})
     return normalizeLimitProvider({
       provider: 'codex',
       accountKey: managedCodexAccountKey(account, authIdentity, email),
+      accountIdentity: resolvedCodexAccountIdentity(
+        email,
+        authIdentity.workspaceAccountId || authIdentity.providerAccountId || account.workspaceAccountId
+      ),
       accountEmail: email,
       accountLabel: account.accountLabel,
       accountName: account.workspaceLabel,
@@ -2966,6 +2992,10 @@ async function fetchLiveCodexAccount(deps = {}, nowMs = Date.now(), managedAccou
   );
   return mapCodexRateLimitsToProvider(payload, {
     accountKey,
+    accountIdentity: resolvedCodexAccountIdentity(
+      email,
+      authIdentity.workspaceAccountId || authIdentity.providerAccountId
+    ),
     accountEmail: email,
     accountLabel: codexAccountLabel(payload),
     accountName: matchingManagedAccount?.workspaceLabel || '',
@@ -3012,6 +3042,7 @@ async function fetchCodexLimits(options = {}, deps = {}) {
   // collapsing the live and managed views of the exact same login.
   const seen = new Set();
   const identityKeys = (provider) => {
+    if (provider.accountIdentity) return [`identity:${provider.accountIdentity}`];
     if (provider.accountKey) return [`key:${provider.accountKey}`];
     return provider.accountEmail ? [`email:${provider.accountEmail}`] : [];
   };
@@ -3046,8 +3077,9 @@ async function fetchAntigravityLimits(_options = {}, deps = {}) {
     const accountLabel = snapshot.accountPlan ? antigravityPlanLabelFromParts(snapshot.accountPlan) : '';
     const accountKeySeed = snapshot.accountEmail || snapshot.accountPlan || 'default';
     const windows = Array.isArray(snapshot.windows)
-      ? snapshot.windows.map((window) => ({
+      ? snapshot.windows.map((window, index) => ({
           kind: window.kind,
+          windowId: window.windowId || window.id || `${window.kind || 'window'}:${index + 1}`,
           label: window.name,
           usedPercent: typeof window.remainingFraction === 'number'
             ? Math.max(0, Math.min(100, (1 - window.remainingFraction) * 100))
@@ -3057,8 +3089,9 @@ async function fetchAntigravityLimits(_options = {}, deps = {}) {
           windowMinutes: window.kind === 'session' ? 300 : window.kind === 'weekly' ? 10_080 : null,
           showMeter: window.showMeter !== false
         }))
-      : (snapshot.pools || []).map((pool) => ({
+      : (snapshot.pools || []).map((pool, index) => ({
           kind: 'weekly',
+          windowId: pool.windowId || pool.id || `pool:${index + 1}`,
           label: pool.name,
           usedPercent: Math.max(0, Math.min(100, (1 - pool.remainingFraction) * 100)),
           resetsAt: pool.resetTime || null,
@@ -3067,6 +3100,7 @@ async function fetchAntigravityLimits(_options = {}, deps = {}) {
     return normalizeLimitProvider({
       provider: 'antigravity',
       accountKey: hashKey('antigravity', accountKeySeed),
+      accountIdentity: snapshot.accountEmail ? hashKey('antigravity-identity', snapshot.accountEmail) : '',
       accountLabel,
       accountEmail: snapshot.accountEmail || '',
       source: 'rpc',
@@ -3560,9 +3594,10 @@ function cursorResetIso(usage) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function cursorBillingWindow(label, fields = {}) {
+function cursorBillingWindow(windowId, label, fields = {}) {
   return {
     kind: 'billing',
+    windowId,
     label,
     ...fields
   };
@@ -3593,6 +3628,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
     return {
       provider: 'cursor',
       accountKey: hashCursorAccountKey(account),
+      accountIdentity: hashCursorAccountKey(account),
       accountLabel: account.label || '',
       status: kind,
       source: 'web',
@@ -3610,7 +3646,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
     ? percentFromUsedLimit(usage.requestsUsed, usage.requestsLimit)
     : usage.planPercent;
   const windows = [
-    cursorBillingWindow('Total', {
+    cursorBillingWindow('total', 'Total', {
       usedPercent: totalPercent,
       used: hasRequestUsage ? usage.requestsUsed : usage.planUsedUsd,
       limit: hasRequestUsage ? usage.requestsLimit : usage.planLimitUsd,
@@ -3624,7 +3660,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
   ];
 
   if (finiteNumber(usage.autoPercent) !== null) {
-    windows.push(cursorBillingWindow('Auto', {
+    windows.push(cursorBillingWindow('auto', 'Auto', {
       usedPercent: usage.autoPercent,
       resetsAt,
       windowMinutes: null
@@ -3632,7 +3668,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
   }
 
   if (finiteNumber(usage.apiPercent) !== null) {
-    windows.push(cursorBillingWindow('API', {
+    windows.push(cursorBillingWindow('api', 'API', {
       usedPercent: usage.apiPercent,
       resetsAt,
       windowMinutes: null
@@ -3644,7 +3680,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
       ?? (finiteNumber(usage.onDemandLimitUsd) !== null
         ? Math.max(0, usage.onDemandLimitUsd - (finiteNumber(usage.onDemandUsedUsd) || 0))
         : null);
-    windows.push(cursorBillingWindow('Credits', {
+    windows.push(cursorBillingWindow('on-demand', 'Credits', {
       usedPercent: finiteNumber(usage.onDemandPercent) ?? percentFromUsedLimit(usage.onDemandUsedUsd, usage.onDemandLimitUsd),
       used: usage.onDemandUsedUsd,
       limit: usage.onDemandLimitUsd,
@@ -3661,7 +3697,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
       ?? (finiteNumber(usage.teamOnDemandLimitUsd) !== null
         ? Math.max(0, usage.teamOnDemandLimitUsd - (finiteNumber(usage.teamOnDemandUsedUsd) || 0))
         : null);
-    windows.push(cursorBillingWindow('Team credits', {
+    windows.push(cursorBillingWindow('team-on-demand', 'Team credits', {
       usedPercent: finiteNumber(usage.teamOnDemandPercent) ?? percentFromUsedLimit(usage.teamOnDemandUsedUsd, usage.teamOnDemandLimitUsd),
       used: usage.teamOnDemandUsedUsd,
       limit: usage.teamOnDemandLimitUsd,
@@ -3678,7 +3714,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
       ?? (finiteNumber(usage.teamPooledLimitUsd) !== null
         ? Math.max(0, usage.teamPooledLimitUsd - (finiteNumber(usage.teamPooledUsedUsd) || 0))
         : null);
-    windows.push(cursorBillingWindow('Team pool', {
+    windows.push(cursorBillingWindow('team-pool', 'Team pool', {
       usedPercent: finiteNumber(usage.teamPooledPercent) ?? percentFromUsedLimit(usage.teamPooledUsedUsd, usage.teamPooledLimitUsd),
       used: usage.teamPooledUsedUsd,
       limit: usage.teamPooledLimitUsd,
@@ -3692,6 +3728,7 @@ async function fetchCursorLimits(_options = {}, deps = {}) {
   return {
     provider: 'cursor',
     accountKey: hashCursorAccountKey(account),
+    accountIdentity: hashCursorAccountKey(account),
     accountLabel: formatCursorMembership(usage.membershipType) || account.label || '',
     status: 'ok',
     source: 'web',

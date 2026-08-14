@@ -12,6 +12,7 @@ const CODEX_TRANSIENT_WINDOW_RETENTION_MS = 10 * 60 * 1000;
 const CODEX_TRANSIENT_PROVIDER_STATUSES = new Set(['unavailable', 'error', 'rateLimited', 'sourceRateLimited']);
 const MAX_ACCOUNT_LABEL_INPUT_LENGTH = 256;
 const MAX_ACCOUNT_NAME_INPUT_LENGTH = 512;
+const MAX_STABLE_IDENTIFIER_LENGTH = 160;
 
 function asNumber(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -88,6 +89,15 @@ function normalizeAccountEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) ? raw : '';
 }
 
+// These identifiers are protocol keys rather than display text. Keep their
+// grammar deliberately narrow so a provider response cannot turn a label,
+// email, URL, or opaque JSON blob into a durable notification target.
+function normalizeStableIdentifier(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw.length > MAX_STABLE_IDENTIFIER_LENGTH) return '';
+  return /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(raw) ? raw : '';
+}
+
 function normalizeWindowKind(value) {
   const raw = String(value || '').trim().toLowerCase().replace(/[_\s-]+/g, '');
   if (raw === 'session') return 'session';
@@ -156,6 +166,12 @@ function normalizeLimitWindow(input) {
   const usedPercent = percentFromWindow(input, used, limit);
   return {
     kind,
+    ...(normalizeStableIdentifier(input.windowId ?? input.window_id) ? {
+      windowId: normalizeStableIdentifier(input.windowId ?? input.window_id)
+    } : {}),
+    ...(normalizeStableIdentifier(input.cycleId ?? input.cycle_id) ? {
+      cycleId: normalizeStableIdentifier(input.cycleId ?? input.cycle_id)
+    } : {}),
     ...(metric ? { metric } : {}),
     label: normalizeWindowLabel(input.label || input.displayLabel || input.title),
     used,
@@ -386,6 +402,9 @@ function normalizeLimitProvider(input) {
   return {
     provider,
     accountKey: input.accountKey ? String(input.accountKey) : '',
+    ...(normalizeStableIdentifier(input.accountIdentity ?? input.account_identity) ? {
+      accountIdentity: normalizeStableIdentifier(input.accountIdentity ?? input.account_identity)
+    } : {}),
     accountLabel,
     planLabel: normalizeAccountLabel(input.planLabel),
     accountName: normalizeAccountName(input.accountName ?? input.accountLogin ?? input.login),
@@ -444,14 +463,24 @@ function isProviderStale(provider, summary, device, staleAfterMs, nowMs) {
 }
 
 function providerAggregateKey(provider) {
-  return `${provider.provider}:${provider.accountKey || provider.status}`;
+  return `${provider.provider}:${provider.accountIdentity || provider.accountKey || provider.status}`;
 }
 
 function isConfiguredProvider(provider) {
-  return Boolean(provider.accountKey && provider.status !== 'notConfigured' && provider.status !== 'disabled');
+  return Boolean(
+    (provider.accountIdentity || provider.accountKey)
+    && provider.status !== 'notConfigured'
+    && provider.status !== 'disabled'
+  );
 }
 
 function providerCollapseKey(provider) {
+  // A provider-issued identity is a stronger statement than the old
+  // provider-specific account-key allowlist: it safely keeps two genuinely
+  // distinct accounts apart for every provider that can expose one.
+  if (provider.accountIdentity && isConfiguredProvider(provider)) {
+    return providerAggregateKey(provider);
+  }
   if (
     (provider.provider === 'claude'
       || provider.provider === 'codex'
@@ -474,6 +503,7 @@ function providerWindowRank(provider) {
 function codexProviderIdentityKeys(provider) {
   if (provider?.provider !== 'codex') return [];
   return [
+    provider.accountIdentity ? `identity:${provider.accountIdentity}` : '',
     provider.accountKey ? `key:${provider.accountKey}` : '',
     provider.accountEmail ? `email:${provider.accountEmail}` : ''
   ].filter(Boolean);
@@ -491,6 +521,7 @@ function retainedCodexProvider(previousProvider, currentProvider, windows) {
   return {
     ...previousProvider,
     ...currentProvider,
+    accountIdentity: currentProvider.accountIdentity || previousProvider.accountIdentity,
     accountKey: currentProvider.accountKey || previousProvider.accountKey,
     accountLabel: currentProvider.accountLabel || previousProvider.accountLabel,
     planLabel: currentProvider.planLabel || previousProvider.planLabel,
@@ -655,6 +686,7 @@ function publicLimits(limits) {
     refreshMs: normalized.refreshMs,
     providers: normalized.providers.map(({
       accountKey,
+      accountIdentity,
       accountEmail,
       accountName,
       accountLabel,

@@ -78,6 +78,58 @@ function claudeProvider(accountKey, accountEmail, remainingPercent, updatedAt) {
   };
 }
 
+test('stable notification identifiers normalize, survive authenticated sync, and stay off public stats', () => {
+  const provider = normalizeLimitProvider({
+    provider: 'codex',
+    accountKey: 'sha256:legacy-machine-key',
+    accountIdentity: 'codex:account-42:workspace-7',
+    status: 'ok',
+    source: 'rpc',
+    windows: [{
+      kind: 'session',
+      windowId: 'primary-5h',
+      cycleId: 'cycle-2026-08-12T10:00:00Z',
+      label: '5-hour',
+      usedPercent: 40
+    }]
+  });
+
+  assert.equal(provider.accountIdentity, 'codex:account-42:workspace-7');
+  assert.equal(provider.windows[0].windowId, 'primary-5h');
+  assert.equal(provider.windows[0].cycleId, 'cycle-2026-08-12T10:00:00Z');
+  assert.equal(syncLimits({ providers: [provider] }).providers[0].accountIdentity, 'codex:account-42:workspace-7');
+  assert.equal(publicLimits({ providers: [provider] }).providers[0].accountIdentity, undefined);
+});
+
+test('stable notification identifiers never derive from labels and old payloads remain readable', () => {
+  const legacy = normalizeLimitProvider({
+    provider: 'claude',
+    accountKey: 'sha256:legacy',
+    status: 'ok',
+    source: 'oauth',
+    windows: [{ kind: 'session', label: '5-hour', usedPercent: 20 }]
+  });
+  assert.equal(legacy.accountIdentity, undefined);
+  assert.equal(legacy.windows[0].windowId, undefined);
+
+  const invalid = normalizeLimitProvider({
+    provider: 'claude',
+    accountIdentity: 'member@example.com',
+    status: 'ok',
+    source: 'oauth',
+    windows: [{
+      kind: 'session',
+      windowId: '5-hour usage',
+      cycleId: 'https://example.test/cycle',
+      label: '5-hour',
+      usedPercent: 20
+    }]
+  });
+  assert.equal(invalid.accountIdentity, undefined);
+  assert.equal(invalid.windows[0].windowId, undefined);
+  assert.equal(invalid.windows[0].cycleId, undefined);
+});
+
 test('aggregateLimits keeps distinct Claude accounts and dedupes each one across devices', () => {
   const aggregate = aggregateLimits([
     {
@@ -116,6 +168,55 @@ test('aggregateLimits keeps distinct Claude accounts and dedupes each one across
     providers.find((provider) => provider.accountKey === 'sha256:claude-b').windows[0].remainingPercent,
     82
   );
+});
+
+test('aggregateLimits prefers stable accountIdentity over legacy accountKey across devices', () => {
+  const aggregate = aggregateLimits([
+    {
+      deviceId: 'macbook',
+      limits: {
+        providers: [{
+          ...claudeProvider('sha256:mac-local-key', 'member@example.com', 45, '2026-08-12T10:00:00.000Z'),
+          accountIdentity: 'claude:account-42:organization-7'
+        }]
+      }
+    },
+    {
+      deviceId: 'desktop',
+      limits: {
+        providers: [{
+          ...claudeProvider('sha256:windows-local-key', 'member@example.com', 80, '2026-08-12T10:01:00.000Z'),
+          accountIdentity: 'claude:account-42:organization-7'
+        }]
+      }
+    }
+  ], 0, Date.parse('2026-08-12T10:02:00.000Z'));
+
+  const providers = aggregate.providers.filter((provider) => provider.provider === 'claude');
+  assert.equal(providers.length, 1);
+  assert.equal(providers[0].accountIdentity, 'claude:account-42:organization-7');
+  assert.equal(providers[0].accountKey, 'sha256:windows-local-key');
+  assert.equal(providers[0].windows[0].remainingPercent, 80);
+});
+
+test('aggregateLimits retains distinct configured accounts when providers expose stable identities', () => {
+  const aggregate = aggregateLimits([{
+    deviceId: 'desktop',
+    limits: {
+      providers: [
+        {
+          provider: 'cursor', accountKey: 'sha256:cursor-a', accountIdentity: 'sha256:cursor-account-a',
+          status: 'ok', source: 'web', updatedAt: '2026-08-12T10:00:00.000Z', windows: []
+        },
+        {
+          provider: 'cursor', accountKey: 'sha256:cursor-b', accountIdentity: 'sha256:cursor-account-b',
+          status: 'ok', source: 'web', updatedAt: '2026-08-12T10:01:00.000Z', windows: []
+        }
+      ]
+    }
+  }], 0, Date.parse('2026-08-12T10:02:00.000Z'));
+
+  assert.equal(aggregate.providers.filter((provider) => provider.provider === 'cursor').length, 2);
 });
 
 test('aggregateLimits preserves distinct Codex accounts by hashed account key', () => {

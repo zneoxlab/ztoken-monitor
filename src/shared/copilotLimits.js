@@ -217,11 +217,12 @@ function mapCopilotUsageToProvider(usage, meta = {}) {
   const premium = makeRateWindow(usage.premium, resetsAt);
   const chat = makeRateWindow(usage.chat, resetsAt);
   const windows = [];
-  if (premium) windows.push({ kind: 'billing', label: 'Premium', ...premium });
-  if (chat) windows.push({ kind: 'billing', label: 'Chat', ...chat });
+  if (premium) windows.push({ kind: 'billing', windowId: 'premium', label: 'Premium', ...premium });
+  if (chat) windows.push({ kind: 'billing', windowId: 'chat', label: 'Chat', ...chat });
   return normalizeLimitProvider({
     provider: 'copilot',
     accountKey: meta.accountKey || '',
+    accountIdentity: meta.accountIdentity || '',
     accountLabel: meta.accountLabel || displayPlanLabel(usage.copilotPlan),
     accountName: meta.accountName || '',
     accountEmail: meta.accountEmail || '',
@@ -333,6 +334,7 @@ async function fetchCopilotLimits(options = {}, deps = {}) {
     const accountSeed = login || (identity.id != null ? String(identity.id) : '');
     return mapCopilotUsageToProvider(usage, {
       accountKey: hashKey('copilot', accountSeed || token.slice(0, 8)),
+      accountIdentity: accountSeed ? hashKey('copilot-identity', accountSeed) : '',
       accountLabel: displayPlanLabel(usage.copilotPlan),
       accountName: login,
       accountEmail: '',

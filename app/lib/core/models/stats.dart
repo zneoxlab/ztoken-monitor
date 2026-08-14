@@ -28,11 +28,13 @@ double _toDouble(dynamic v, [double d = 0]) {
   return d;
 }
 
-String _toStr(dynamic v, [String d = '']) => v is String ? v : (v == null ? d : v.toString());
+String _toStr(dynamic v, [String d = '']) =>
+    v is String ? v : (v == null ? d : v.toString());
 bool _toBool(dynamic v, [bool d = false]) => v is bool ? v : d;
 
-Map<String, dynamic> _toMap(dynamic v) =>
-    v is Map<String, dynamic> ? v : (v is Map ? v.cast<String, dynamic>() : const {});
+Map<String, dynamic> _toMap(dynamic v) => v is Map<String, dynamic>
+    ? v
+    : (v is Map ? v.cast<String, dynamic>() : const {});
 
 List<dynamic> _toList(dynamic v) => v is List ? v : const [];
 
@@ -66,7 +68,8 @@ class Period {
   final Map<String, int> clientCacheReads; // 输入·命中
   final Map<String, int> clientCacheWrites; // 缓存写入
   final Map<String, int> clientOutputs; // 输出
-  final Map<String, Map<String, int>> clientModels; // client → {model → tokens}(主力模型)
+  final Map<String, Map<String, int>>
+  clientModels; // client → {model → tokens}(主力模型)
   final Map<String, int> modelCacheReads;
   final Map<String, int> modelCacheWrites;
   final Map<String, int> modelOutputs;
@@ -139,7 +142,10 @@ class HistoryBucket {
 
   factory HistoryBucket.fromJson(dynamic v) {
     final m = _toMap(v);
-    return HistoryBucket(tokens: _toInt(m['tokens']), cost: _toDouble(m['cost']));
+    return HistoryBucket(
+      tokens: _toInt(m['tokens']),
+      cost: _toDouble(m['cost']),
+    );
   }
 }
 
@@ -251,7 +257,9 @@ class HistoryPreview {
     return HistoryPreview(
       daily: _toList(m['daily']).map(HistoryDay.fromJson).toList(),
       monthly: _toList(m['monthly']).map(HistoryMonth.fromJson).toList(),
-      summary: m['summary'] == null ? null : HistorySummary.fromJson(m['summary']),
+      summary: m['summary'] == null
+          ? null
+          : HistorySummary.fromJson(m['summary']),
     );
   }
 }
@@ -307,7 +315,9 @@ class LimitsWindow {
       usedPercent: _toInt(m['usedPercent']),
       remainingPercent: _toInt(m['remainingPercent']),
       resetsAt: _toStr(m['resetsAt']),
-      windowMinutes: _optionalInt(m['windowMinutes'] ?? m['window_minutes'] ?? m['windowDurationMins']),
+      windowMinutes: _optionalInt(
+        m['windowMinutes'] ?? m['window_minutes'] ?? m['windowDurationMins'],
+      ),
       resetDescription: _optionalStr(m['resetDescription']),
       metric: m['metric'] is String ? m['metric'] as String : null,
       remaining: m['remaining'] == null ? null : _toDouble(m['remaining']),
@@ -327,6 +337,7 @@ class LimitsProvider {
     this.status = '',
     this.source,
     this.accountKey,
+    this.accountIdentity,
     this.windows = const [],
     this.accountEmail,
     this.accountName,
@@ -338,6 +349,7 @@ class LimitsProvider {
   final String status; // 'ok' / 'warning' / 'exceeded' / 'unknown'
   final String? source; // 'oauth' / 'cli' / 'web' / 'rpc' / 'local' / 'api'
   final String? accountKey; // sha256:… 稳定账户标识
+  final String? accountIdentity; // 可选跨设备稳定账户主体(新协议)
   final List<LimitsWindow> windows;
   final String? accountEmail;
   final String? accountName;
@@ -352,10 +364,19 @@ class LimitsProvider {
       status: _toStr(m['status']),
       source: m['source'] is String ? m['source'] as String : null,
       accountKey: m['accountKey'] is String ? m['accountKey'] as String : null,
+      accountIdentity: m['accountIdentity'] is String
+          ? m['accountIdentity'] as String
+          : null,
       windows: _toList(m['windows']).map(LimitsWindow.fromJson).toList(),
-      accountEmail: m['accountEmail'] is String ? m['accountEmail'] as String : null,
-      accountName: m['accountName'] is String ? m['accountName'] as String : null,
-      accountLabel: m['accountLabel'] is String ? m['accountLabel'] as String : null,
+      accountEmail: m['accountEmail'] is String
+          ? m['accountEmail'] as String
+          : null,
+      accountName: m['accountName'] is String
+          ? m['accountName'] as String
+          : null,
+      accountLabel: m['accountLabel'] is String
+          ? m['accountLabel'] as String
+          : null,
       planLabel: m['planLabel'] is String ? m['planLabel'] as String : null,
       updatedAt: _optionalStr(m['updatedAt']),
     );
@@ -430,9 +451,15 @@ class DeviceRecord {
       stale: _toBool(m['stale']),
       osName: m['osName'] is String ? m['osName'] as String : null,
       osVersion: m['osVersion'] is String ? m['osVersion'] as String : null,
-      agentVersion: m['agentVersion'] is String ? m['agentVersion'] as String : null,
-      agentRuntime: m['agentRuntime'] is String ? m['agentRuntime'] as String : null,
-      syncUploadIntervalMs: m['syncUploadIntervalMs'] is int ? m['syncUploadIntervalMs'] as int : null,
+      agentVersion: m['agentVersion'] is String
+          ? m['agentVersion'] as String
+          : null,
+      agentRuntime: m['agentRuntime'] is String
+          ? m['agentRuntime'] as String
+          : null,
+      syncUploadIntervalMs: m['syncUploadIntervalMs'] is int
+          ? m['syncUploadIntervalMs'] as int
+          : null,
       periods: m['periods'] == null ? null : Periods.fromJson(m['periods']),
       limits: m['limits'] == null ? null : LimitsAgg.fromJson(m['limits']),
     );
@@ -446,6 +473,7 @@ class StatsSnapshot {
   const StatsSnapshot({
     this.staleAfterMs = 600000,
     this.subscriptionsUpdatedAt = '',
+    this.notificationRulesUpdatedAt = '',
     this.periods,
     this.devices = const [],
     this.historyPreview,
@@ -456,6 +484,8 @@ class StatsSnapshot {
   final int staleAfterMs;
   // 订阅列表版本戳:空串/缺失 = "无变更"(GOAL.md §6.3.5)
   final String subscriptionsUpdatedAt;
+  // SaaS 配额通知规则版本戳；缺失代表旧/自建 Hub，无需刷新规则文档。
+  final String notificationRulesUpdatedAt;
   final Periods? periods; // 聚合后的 today/month/allTime
   final List<DeviceRecord> devices;
   final HistoryPreview? historyPreview;
@@ -466,13 +496,13 @@ class StatsSnapshot {
     return StatsSnapshot(
       staleAfterMs: _toInt(m['staleAfterMs'], 600000),
       subscriptionsUpdatedAt: _toStr(m['subscriptionsUpdatedAt']),
+      notificationRulesUpdatedAt: _toStr(m['notificationRulesUpdatedAt']),
       periods: m['periods'] == null ? null : Periods.fromJson(m['periods']),
       devices: _toList(m['devices']).map(DeviceRecord.fromJson).toList(),
-      historyPreview:
-          m['historyPreview'] == null ? null : HistoryPreview.fromJson(m['historyPreview']),
+      historyPreview: m['historyPreview'] == null
+          ? null
+          : HistoryPreview.fromJson(m['historyPreview']),
       limits: m['limits'] == null ? null : LimitsAgg.fromJson(m['limits']),
     );
   }
 }
-
-

@@ -7,7 +7,7 @@
 
 const { readJsonBody } = require('../../../src/shared/http');
 
-function createApiRoutes({ pool, hub, db, sseRegistry, sendJson }) {
+function createApiRoutes({ pool, hub, db, sseRegistry, sendJson, pushTokenCrypto = null }) {
   // GET /api/health（不鉴权，server.js 直接调）
   async function health(req, res) {
     const deviceCount = await db.countAllDevices(pool);
@@ -117,6 +117,90 @@ function createApiRoutes({ pool, hub, db, sseRegistry, sendJson }) {
     }
   }
 
+  // GET /api/notification-targets：只返回当前实际可观测到的百分比额度窗口。
+  async function getNotificationTargets(req, res) {
+    const result = await hub.getNotificationTargets(req.userId);
+    return sendJson(res, 200, { ok: true, ...result });
+  }
+
+  // GET /api/notification-rules
+  async function getNotificationRules(req, res) {
+    const doc = await hub.getNotificationRules(req.userId);
+    return sendJson(res, 200, { ok: true, ...doc });
+  }
+
+  // PUT /api/notification-rules
+  async function putNotificationRules(req, res) {
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (error) {
+      if (error.code === 'payload_too_large') {
+        res.shouldKeepAlive = false;
+        return sendJson(res, 413, { error: 'payload_too_large', message: error.message }, { connection: 'close' });
+      }
+      return sendJson(res, 400, { error: 'bad_request', message: error.message });
+    }
+    try {
+      const stored = await hub.setNotificationRules(req.userId, body?.rules, body?.baseUpdatedAt);
+      return sendJson(res, 200, { ok: true, ...stored });
+    } catch (error) {
+      if (error.code === 'stale_write') {
+        return sendJson(res, 409, { error: 'stale_write', ...error.current });
+      }
+      if (error.code === 'bad_notification_rules') {
+        return sendJson(res, 400, { error: 'bad_request', message: error.message });
+      }
+      throw error;
+    }
+  }
+
+  // PUT /api/push/installations/:installationId。installationId 以 path 为准，
+  // 绝不从 body 接收 userId；JWT 是唯一的账号绑定来源。
+  async function putPushInstallation(req, res, url) {
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (error) {
+      if (error.code === 'payload_too_large') {
+        res.shouldKeepAlive = false;
+        return sendJson(res, 413, { error: 'payload_too_large', message: error.message }, { connection: 'close' });
+      }
+      return sendJson(res, 400, { error: 'bad_request', message: error.message });
+    }
+    try {
+      const installationId = decodeURIComponent(url.pathname.slice('/api/push/installations/'.length));
+      const installation = await hub.registerPushInstallation(req.userId, {
+        installationId,
+        platform: body?.platform,
+        provider: body?.provider,
+        environment: body?.environment,
+        appVersion: body?.appVersion,
+        token: body?.token
+      }, pushTokenCrypto);
+      return sendJson(res, 200, { ok: true, installation });
+    } catch (error) {
+      if (error.code === 'push_not_configured') return sendJson(res, 503, { error: 'push_not_configured' });
+      if (error.code === 'bad_push_installation') {
+        return sendJson(res, 400, { error: 'bad_request', message: error.message });
+      }
+      throw error;
+    }
+  }
+
+  async function deletePushInstallation(req, res, url) {
+    const installationId = decodeURIComponent(url.pathname.slice('/api/push/installations/'.length));
+    try {
+      const removed = await hub.removePushInstallation(req.userId, installationId);
+      return sendJson(res, 200, { ok: true, installationId, removed });
+    } catch (error) {
+      if (error.code === 'bad_push_installation') {
+        return sendJson(res, 400, { error: 'bad_request', message: error.message });
+      }
+      throw error;
+    }
+  }
+
   // DELETE /api/devices/:id
   async function deleteDevice(req, res, url) {
     const deviceId = decodeURIComponent(url.pathname.slice('/api/devices/'.length));
@@ -136,6 +220,11 @@ function createApiRoutes({ pool, hub, db, sseRegistry, sendJson }) {
     if (method === 'POST' && pathname === '/api/ingest') return ingest(req, res);
     if (method === 'GET' && pathname === '/api/subscriptions') return getSubscriptions(req, res);
     if (method === 'PUT' && pathname === '/api/subscriptions') return putSubscriptions(req, res);
+    if (method === 'GET' && pathname === '/api/notification-targets') return getNotificationTargets(req, res);
+    if (method === 'GET' && pathname === '/api/notification-rules') return getNotificationRules(req, res);
+    if (method === 'PUT' && pathname === '/api/notification-rules') return putNotificationRules(req, res);
+    if (method === 'PUT' && pathname.startsWith('/api/push/installations/')) return putPushInstallation(req, res, url);
+    if (method === 'DELETE' && pathname.startsWith('/api/push/installations/')) return deletePushInstallation(req, res, url);
     if (method === 'DELETE' && pathname.startsWith('/api/devices/')) return deleteDevice(req, res, url);
 
     return false;

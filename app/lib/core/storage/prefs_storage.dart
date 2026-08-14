@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../format/formatters.dart' show DisplayCurrency;
+import '../limits/limit_display_mode.dart';
 import '../../theme/theme_mode.dart' show AppThemeMode, AppMaterial;
 
 // ============================================================
-// 偏好存储 —— 主题 / 材质 / 显示货币 / 通知开关。
+// 偏好存储 —— 主题 / 材质 / 显示货币 / 自建 Hub 本地通知回退。
 // 用 shared_preferences:iOS/Android 官方 + 鸿蒙 SIG 适配包自动接管。
 // 全部本地持久化,不随账户同步(GOAL.md §7)。
 // 启动时异步加载已存值,变更时同步写盘。
@@ -20,6 +21,7 @@ class PrefsKeys {
   static const displayCurrency = 'ui.display_currency'; // DisplayCurrency.code
   static const notifyEnabled = 'notify.enabled';
   static const notifyThresholdPercent = 'notify.threshold_percent'; // int 0-100
+  static const limitDisplayMode = 'limits.display_mode'; // remaining / used
   static const hubUrl = 'hub.url'; // Hub 地址,可改自建
   static const sseEnabled = 'sse.enabled'; // 实时推送开关,false 则降级轮询
   // 记住账号密码(用户主动勾选):本地明文存邮箱+密码,仅为免输便利。
@@ -32,12 +34,15 @@ class PrefsKeys {
   // 空串表示按风险智能选择；新增键必须保持旧版本缺失时的默认行为。
   static const homeWidgetPinnedLimits = 'home_widget.pinned_limits';
   static const appUpdateLastCheckAt = 'app_update.last_check_at';
+  // 最近处理过的服务端通知事件，避免冷启动事件与前台回调重复跳转。
+  static const handledPushEventIds = 'push.handled_event_ids';
 }
 
 // 默认 Hub 地址:SaaS 云端(GOAL.md §6.0)。
 const kDefaultHubUrl = 'https://token-hub.zneox.com';
 
-// 全部应用设置。默认值对照 GOAL.md:跟随系统 / 实色 / USD / 通知开 / 80%。
+// 全部应用设置。notify* 仅供自建 Hub 的旧本地差分提醒兼容；SaaS 使用
+// notification_rules 文档，不再把这个全局默认当作用户授权。
 @immutable
 class AppSettings {
   const AppSettings({
@@ -46,6 +51,7 @@ class AppSettings {
     this.displayCurrency = DisplayCurrency.usd,
     this.notifyEnabled = true,
     this.notifyThresholdPercent = 80,
+    this.limitDisplayMode = LimitDisplayMode.remaining,
     this.hubUrl = kDefaultHubUrl,
     this.sseEnabled = true, // 实时推送默认开,false 降级轮询
     this.rememberCredentials = true, // 默认记住账号密码(登录态保持便利)
@@ -60,6 +66,7 @@ class AppSettings {
   final DisplayCurrency displayCurrency;
   final bool notifyEnabled;
   final int notifyThresholdPercent; // 配额剩余低于此百分比时本地提醒
+  final LimitDisplayMode limitDisplayMode; // 配额百分比显示“剩余”或“已用”
   final String hubUrl; // Hub 地址,默认 SaaS 云端,可改自建(GOAL.md §6.0)
   final bool sseEnabled; // 实时推送开关,false 降级 60s 轮询
   final bool rememberCredentials; // 是否记住账号密码(登录表单预填)
@@ -74,6 +81,7 @@ class AppSettings {
     DisplayCurrency? displayCurrency,
     bool? notifyEnabled,
     int? notifyThresholdPercent,
+    LimitDisplayMode? limitDisplayMode,
     String? hubUrl,
     bool? sseEnabled,
     bool? rememberCredentials,
@@ -89,6 +97,7 @@ class AppSettings {
       notifyEnabled: notifyEnabled ?? this.notifyEnabled,
       notifyThresholdPercent:
           notifyThresholdPercent ?? this.notifyThresholdPercent,
+      limitDisplayMode: limitDisplayMode ?? this.limitDisplayMode,
       hubUrl: hubUrl ?? this.hubUrl,
       sseEnabled: sseEnabled ?? this.sseEnabled,
       rememberCredentials: rememberCredentials ?? this.rememberCredentials,
@@ -107,6 +116,7 @@ class AppSettings {
     PrefsKeys.displayCurrency: displayCurrency.code,
     PrefsKeys.notifyEnabled: notifyEnabled,
     PrefsKeys.notifyThresholdPercent: notifyThresholdPercent,
+    PrefsKeys.limitDisplayMode: limitDisplayMode.name,
     PrefsKeys.hubUrl: hubUrl,
     PrefsKeys.sseEnabled: sseEnabled,
     PrefsKeys.rememberCredentials: rememberCredentials,
@@ -143,6 +153,9 @@ class AppSettings {
       notifyEnabled: prefs.getBool(PrefsKeys.notifyEnabled) ?? true,
       notifyThresholdPercent:
           prefs.getInt(PrefsKeys.notifyThresholdPercent) ?? 80,
+      limitDisplayMode: parseLimitDisplayMode(
+        prefs.getString(PrefsKeys.limitDisplayMode),
+      ),
       hubUrl: prefs.getString(PrefsKeys.hubUrl) ?? kDefaultHubUrl,
       sseEnabled: prefs.getBool(PrefsKeys.sseEnabled) ?? true,
       rememberCredentials: prefs.getBool(PrefsKeys.rememberCredentials) ?? true,
@@ -191,6 +204,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final clamped = percent.clamp(1, 100);
     state = state.copyWith(notifyThresholdPercent: clamped);
     await _prefs.setInt(PrefsKeys.notifyThresholdPercent, clamped);
+  }
+
+  Future<void> setLimitDisplayMode(LimitDisplayMode mode) async {
+    state = state.copyWith(limitDisplayMode: mode);
+    await _prefs.setString(PrefsKeys.limitDisplayMode, mode.name);
   }
 
   Future<void> setHubUrl(String url) async {

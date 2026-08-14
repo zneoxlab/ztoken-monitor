@@ -8,9 +8,19 @@ const { includeIgnoreFile } = require('@eslint/compat');
 module.exports = [
   // Respect .gitignore (node_modules, dist, build, tmp, _site, .agents, .claude, data, …)
   includeIgnoreFile(path.resolve(__dirname, '.gitignore')),
-  // worker/src/shared/ is generated (vendored CommonJS); linted at its src/shared/ source
-  // saas-hub/ is an independent service with its own package.json and toolchain
-  { ignores: ['worker/src/shared/**', 'saas-hub/**'] },
+  // worker/src/shared/ is generated (vendored CommonJS); linted at its src/shared/ source.
+  // saas-hub/ is an independent service with its own package.json and toolchain.
+  // includeIgnoreFile() only loads the root file, so also exclude generated trees
+  // declared by app/.gitignore rather than trying to lint Flutter/OHPM output as JS.
+  {
+    ignores: [
+      'worker/src/shared/**',
+      'saas-hub/**',
+      'app/.dart_tool/**',
+      'app/ohos/oh_modules/**',
+      'app/build/**',
+    ],
+  },
 
   js.configs.recommended,
 

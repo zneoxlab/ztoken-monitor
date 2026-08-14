@@ -42,7 +42,9 @@ void main() {
     });
 
     test('clients 值为 null 回落 0', () {
-      const json = {'clients': {'codex': null, 'claude': 5}};
+      const json = {
+        'clients': {'codex': null, 'claude': 5},
+      };
       final p = Period.fromJson(json);
       expect(p.clients['codex'], 0);
       expect(p.clients['claude'], 5);
@@ -81,7 +83,12 @@ void main() {
     test('daily/monthly 数组解析', () {
       const json = {
         'daily': [
-          {'date': '2026-08-05', 'tokens': 100, 'cost': 0.5, 'activeTimeMs': 12000},
+          {
+            'date': '2026-08-05',
+            'tokens': 100,
+            'cost': 0.5,
+            'activeTimeMs': 12000,
+          },
           {'date': '2026-08-06', 'tokens': 200, 'cost': 1.0},
         ],
         'monthly': [
@@ -109,8 +116,13 @@ void main() {
       const json = {
         'staleAfterMs': 600000,
         'subscriptionsUpdatedAt': '2026-08-06T00:00:00.000Z',
+        'notificationRulesUpdatedAt': '2026-08-06T00:01:00.000Z',
         'periods': {
-          'today': {'totalTokens': 100, 'costUsd': 1.0, 'clients': {'codex': 100}},
+          'today': {
+            'totalTokens': 100,
+            'costUsd': 1.0,
+            'clients': {'codex': 100},
+          },
           'month': {'totalTokens': 3000, 'costUsd': 30.0},
           'allTime': {'totalTokens': 50000, 'costUsd': 500.0},
         },
@@ -121,10 +133,12 @@ void main() {
             'platform': 'darwin-arm64',
             'receivedAt': '2026-08-06T10:00:00.000Z',
             'stale': false,
-          }
+          },
         ],
         'historyPreview': {
-          'daily': [{'date': '2026-08-06', 'tokens': 100}],
+          'daily': [
+            {'date': '2026-08-06', 'tokens': 100},
+          ],
         },
         'limits': {
           'providers': [
@@ -132,15 +146,20 @@ void main() {
               'provider': 'claude',
               'status': 'ok',
               'windows': [
-                {'kind': 'session', 'usedPercent': 64, 'resetsAt': '2026-08-06T17:00:00.000Z'}
+                {
+                  'kind': 'session',
+                  'usedPercent': 64,
+                  'resetsAt': '2026-08-06T17:00:00.000Z',
+                },
               ],
-            }
+            },
           ],
         },
       };
       final s = StatsSnapshot.fromJson(json);
       expect(s.staleAfterMs, 600000);
       expect(s.subscriptionsUpdatedAt, isNotEmpty);
+      expect(s.notificationRulesUpdatedAt, '2026-08-06T00:01:00.000Z');
       expect(s.periods!.today!.totalTokens, 100);
       expect(s.periods!.allTime!.totalTokens, 50000);
       expect(s.devices.single.deviceId, 'macbook');
@@ -152,7 +171,9 @@ void main() {
 
     test('极简响应(只有 today)不抛', () {
       const json = {
-        'periods': {'today': {'totalTokens': 5}},
+        'periods': {
+          'today': {'totalTokens': 5},
+        },
       };
       final s = StatsSnapshot.fromJson(json);
       expect(s.periods!.today!.totalTokens, 5);
@@ -166,6 +187,7 @@ void main() {
       final s = StatsSnapshot.fromJson({});
       expect(s.staleAfterMs, 600000);
       expect(s.subscriptionsUpdatedAt, '');
+      expect(s.notificationRulesUpdatedAt, '');
       expect(s.periods, isNull);
       expect(s.devices, isEmpty);
     });

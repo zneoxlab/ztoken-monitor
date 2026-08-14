@@ -134,6 +134,7 @@ test('mapCopilotUsageToProvider renders Premium and Chat windows', () => {
 
   assert.equal(provider.provider, 'copilot');
   assert.equal(provider.status, 'ok');
+  assert.deepEqual(provider.windows.map((window) => window.windowId), ['premium', 'chat']);
   assert.equal(provider.accountLabel, 'Pro');
   assert.equal(provider.windows.length, 2);
   assert.equal(provider.windows[0].kind, 'billing');

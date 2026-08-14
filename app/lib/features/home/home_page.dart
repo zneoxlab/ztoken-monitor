@@ -22,12 +22,15 @@ import '../../widgets/year_heatmap.dart';
 
 // 首页区块统一底间距(对照 .card margin-bottom:12)。
 const _kHomeSectionGap = 12.0;
-const _kMono = TextStyle(fontFamily: 'Menlo', fontFamilyFallback: ['monospace']);
+const _kMono = TextStyle(
+  fontFamily: 'Menlo',
+  fontFamilyFallback: ['monospace'],
+);
 
 Widget _homeSection(Widget child) => Padding(
-      padding: const EdgeInsets.only(bottom: _kHomeSectionGap),
-      child: child,
-    );
+  padding: const EdgeInsets.only(bottom: _kHomeSectionGap),
+  child: child,
+);
 // 数据源:statsProvider(AsyncValue<StatsSnapshot>)。
 //   冷启动 GET /api/stats 全量 → SSE/轮询增量刷新(GOAL.md §6.3)。
 // 三态:loading(骨架)/ error(重试按钮)/ data(6 块渲染)。
@@ -49,7 +52,9 @@ class HomePage extends ConsumerWidget {
         child: SafeArea(
           child: async.when(
             loading: () => const _Loading(),
-            error: (e, st) => _Error(onRetry: () => ref.read(statsProvider.notifier).refresh()),
+            error: (e, st) => _Error(
+              onRetry: () => ref.read(statsProvider.notifier).refresh(),
+            ),
             data: (snapshot) => _StatsContent(
               snapshot: snapshot,
               currency: currency,
@@ -104,7 +109,14 @@ class _Error extends StatelessWidget {
                 color: t.accent,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('重试', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF14201A))),
+              child: Text(
+                '重试',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF14201A),
+                ),
+              ),
             ),
           ),
         ],
@@ -115,7 +127,11 @@ class _Error extends StatelessWidget {
 
 // 数据就绪:渲染 6 块。空数据(today.totalTokens=0 且无设备)显示空态。
 class _StatsContent extends StatelessWidget {
-  const _StatsContent({required this.snapshot, required this.currency, required this.settings});
+  const _StatsContent({
+    required this.snapshot,
+    required this.currency,
+    required this.settings,
+  });
   final StatsSnapshot snapshot;
   final DisplayCurrency currency;
   final AppSettings settings;
@@ -123,7 +139,8 @@ class _StatsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = snapshot.periods?.today;
-    final isEmpty = (today == null || today.totalTokens == 0) && snapshot.devices.isEmpty;
+    final isEmpty =
+        (today == null || today.totalTokens == 0) && snapshot.devices.isEmpty;
     if (isEmpty) {
       return ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -138,16 +155,20 @@ class _StatsContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         _Header(snapshot: snapshot),
-        _homeSection(_HeroCard(
-          periods: snapshot.periods,
-          currency: currency,
-          history: snapshot.historyPreview,
-        )),
-        _homeSection(_DuoMonthAllTime(
-          month: snapshot.periods?.month,
-          allTime: snapshot.periods?.allTime,
-          currency: currency,
-        )),
+        _homeSection(
+          _HeroCard(
+            periods: snapshot.periods,
+            currency: currency,
+            history: snapshot.historyPreview,
+          ),
+        ),
+        _homeSection(
+          _DuoMonthAllTime(
+            month: snapshot.periods?.month,
+            allTime: snapshot.periods?.allTime,
+            currency: currency,
+          ),
+        ),
         _QuotaAlertCard(limits: snapshot.limits, settings: settings),
         _homeSection(const _HeatmapCard()),
         _homeSection(_TrendCard(history: snapshot.historyPreview)),
@@ -194,7 +215,10 @@ class _EmptyState extends StatelessWidget {
         const SizedBox(height: 12),
         Text('暂无用量数据', style: TextStyle(fontSize: 14, color: t.muted)),
         const SizedBox(height: 6),
-        Text('请在桌面端配置采集器并上报到 Hub', style: TextStyle(fontSize: 12, color: t.faint)),
+        Text(
+          '请在桌面端配置采集器并上报到 Hub',
+          style: TextStyle(fontSize: 12, color: t.faint),
+        ),
       ],
     );
   }
@@ -202,7 +226,11 @@ class _EmptyState extends StatelessWidget {
 
 // Hero 大卡:跟随全局 viewPeriodProvider。
 class _HeroCard extends ConsumerWidget {
-  const _HeroCard({required this.periods, required this.currency, required this.history});
+  const _HeroCard({
+    required this.periods,
+    required this.currency,
+    required this.history,
+  });
   final Periods? periods;
   final DisplayCurrency currency;
   final HistoryPreview? history;
@@ -215,8 +243,18 @@ class _HeroCard extends ConsumerWidget {
     final tokens = period?.totalTokens ?? 0;
     final cost = period?.costUsd ?? 0;
     final stats = heroStatsForPeriod(viewPeriod, period, history);
-    final accent14 = Color.fromARGB(36, t.accentRgb[0], t.accentRgb[1], t.accentRgb[2]);
-    final accent3 = Color.fromARGB(8, t.accentRgb[0], t.accentRgb[1], t.accentRgb[2]);
+    final accent14 = Color.fromARGB(
+      36,
+      t.accentRgb[0],
+      t.accentRgb[1],
+      t.accentRgb[2],
+    );
+    final accent3 = Color.fromARGB(
+      8,
+      t.accentRgb[0],
+      t.accentRgb[1],
+      t.accentRgb[2],
+    );
 
     return GlassCard(
       isHero: true,
@@ -262,14 +300,22 @@ class _HeroCard extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Text(
                       formatTokensApproxInline(tokens),
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.muted),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: t.muted,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   formatMoney(cost, currency),
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: t.accent),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: t.accent,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -307,7 +353,11 @@ class _HeroMetaItem extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             value,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.text).merge(_kMono),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: t.text,
+            ).merge(_kMono),
           ),
         ],
       ),
@@ -317,7 +367,11 @@ class _HeroMetaItem extends StatelessWidget {
 
 // 本月 / 累计 双小卡:单张玻璃卡内分栏,避免并排 BackdropFilter 裁切异常。
 class _DuoMonthAllTime extends StatelessWidget {
-  const _DuoMonthAllTime({required this.month, required this.allTime, required this.currency});
+  const _DuoMonthAllTime({
+    required this.month,
+    required this.allTime,
+    required this.currency,
+  });
   final Period? month;
   final Period? allTime;
   final DisplayCurrency currency;
@@ -340,7 +394,11 @@ class _DuoMonthAllTime extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: VerticalDivider(width: 1, thickness: 1, color: t.line.withValues(alpha: 0.45)),
+              child: VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: t.line.withValues(alpha: 0.45),
+              ),
             ),
             Expanded(
               child: _MiniCardContent(
@@ -357,7 +415,11 @@ class _DuoMonthAllTime extends StatelessWidget {
 }
 
 class _MiniCardContent extends StatelessWidget {
-  const _MiniCardContent({required this.label, required this.value, required this.cost});
+  const _MiniCardContent({
+    required this.label,
+    required this.value,
+    required this.cost,
+  });
   final String label;
   final String value;
   final String cost;
@@ -372,10 +434,17 @@ class _MiniCardContent extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: t.text).merge(_kMono),
+          style: TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w700,
+            color: t.text,
+          ).merge(_kMono),
         ),
         const SizedBox(height: 2),
-        Text(cost, style: TextStyle(fontSize: 11, color: t.accent).merge(_kMono)),
+        Text(
+          cost,
+          style: TextStyle(fontSize: 11, color: t.accent).merge(_kMono),
+        ),
       ],
     );
   }
@@ -389,12 +458,15 @@ class _QuotaAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (limits == null || limits!.providers.isEmpty) return const SizedBox.shrink();
+    if (limits == null || limits!.providers.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     final savedOrder = parseLimitProviderOrder(settings.limitProviderOrder);
-    final providers = orderedLimitProviders(limits!.providers, savedOrder: savedOrder)
-        .where((p) => isConfiguredLimitProvider(p) && p.windows.isNotEmpty)
-        .toList();
+    final providers =
+        orderedLimitProviders(limits!.providers, savedOrder: savedOrder)
+            .where((p) => isConfiguredLimitProvider(p) && p.windows.isNotEmpty)
+            .toList();
 
     final windowCount = providers.fold<int>(0, (n, p) => n + p.windows.length);
     if (windowCount == 0) return const SizedBox.shrink();
@@ -412,9 +484,18 @@ class _QuotaAlertCard extends StatelessWidget {
               if (i > 0)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1, color: Theme.of(context).extension<AppThemeTokens>()!.faint.withValues(alpha: 0.35)),
+                  child: Divider(
+                    height: 1,
+                    color: Theme.of(context)
+                        .extension<AppThemeTokens>()!
+                        .faint
+                        .withValues(alpha: 0.35),
+                  ),
                 ),
-              LimitsHomeAccountBlock(provider: providers[i]),
+              LimitsHomeAccountBlock(
+                provider: providers[i],
+                displayMode: settings.limitDisplayMode,
+              ),
             ],
           ],
         ),
@@ -452,20 +533,30 @@ class _HeatmapCardState extends ConsumerState<_HeatmapCard> {
             loading: () => Padding(
               padding: const EdgeInsets.symmetric(vertical: 30),
               child: SizedBox(
-                width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: t.muted),
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: t.muted,
+                ),
               ),
             ),
             error: (e, st) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text('历史加载失败', style: TextStyle(fontSize: 12, color: t.faint)),
+              child: Text(
+                '历史加载失败',
+                style: TextStyle(fontSize: 12, color: t.faint),
+              ),
             ),
             data: (history) {
               final daily = history.daily;
               if (daily.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Text('暂无历史数据', style: TextStyle(fontSize: 12, color: t.faint)),
+                  child: Text(
+                    '暂无历史数据',
+                    style: TextStyle(fontSize: 12, color: t.faint),
+                  ),
                 );
               }
               final scoped = heatmapDailyForViewPeriod(daily, viewPeriod);
@@ -484,7 +575,11 @@ class _HeatmapCardState extends ConsumerState<_HeatmapCard> {
     );
   }
 
-  Widget? _heatmapTrailing(AsyncValue<HistoryPreview> async, ViewPeriod viewPeriod, AppThemeTokens t) {
+  Widget? _heatmapTrailing(
+    AsyncValue<HistoryPreview> async,
+    ViewPeriod viewPeriod,
+    AppThemeTokens t,
+  ) {
     final scopeStyle = TextStyle(fontSize: 11, color: t.faint);
     final streakStyle = TextStyle(fontSize: 11, color: t.accent);
     final scope = Text(activityScopeLabel(viewPeriod), style: scopeStyle);
@@ -531,7 +626,8 @@ class _TrendCard extends StatelessWidget {
     final values = last14.map((d) => d.tokens).toList();
     final peak = values.fold<int>(0, (m, v) => v > m ? v : m);
     final dateLabels = [
-      for (var i = 0; i < last14.length; i++) _dayLabel(i, last14.length, last14),
+      for (var i = 0; i < last14.length; i++)
+        _dayLabel(i, last14.length, last14),
     ];
 
     return GestureDetector(
@@ -545,7 +641,11 @@ class _TrendCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     '近 ${last14.length} 天趋势',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.muted),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: t.muted,
+                    ),
                   ),
                 ),
                 if (peak > 0)
@@ -593,11 +693,16 @@ class _CardHead extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.muted)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: t.muted,
+          ),
+        ),
         if (trailing != null) trailing!,
       ],
     );
   }
 }
-
-

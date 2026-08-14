@@ -20,6 +20,8 @@ pluginManagement {
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
+    // 由 app/build.gradle.kts 在检测到 google-services.json 后才应用。
+    id("com.google.gms.google-services") version "4.5.0" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 

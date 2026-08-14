@@ -21,37 +21,49 @@ const {
 } = require('../../src/shared/subscriptionDisplay');
 const { CURRENCY_CODES, normalizeCurrency } = require('../../src/shared/currency');
 const { stripSessionDetailFromRecord, stripSessionsFromStats } = require('./deviceRecord');
+const {
+  buildNotificationTargets,
+  notificationRulesDocument,
+  isStaleNotificationRulesWrite
+} = require('./notificationRules');
+const { evaluateQuotaNotifications } = require('./quotaNotifications');
 
-function createHub({ pool, db, sseRegistry, staleAfterMs }) {
+function createHub({ pool, db, sseRegistry, staleAfterMs, pushTokenCrypto = null }) {
   // 实际传入 db 模块（已注入 pool 的函数集），或用 pool + 默认 db
   const dbApi = db || require('./db');
 
-  async function loadDevices(userId) {
-    const devices = await dbApi.listDevicesByUser(pool, userId);
+  async function loadDevices(userId, executor = pool) {
+    const devices = await dbApi.listDevicesByUser(executor, userId);
     return devices.map(stripSessionDetailFromRecord);
   }
 
   // ---- 聚合（复用 aggregateDevices）----
-  async function getStats(userId) {
-    const devices = await loadDevices(userId);
+  async function getStatsWithExecutor(userId, executor = pool) {
+    const devices = await loadDevices(userId, executor);
     const stats = aggregateDevices(devices, staleAfterMs);
     stats.staleAfterMs = staleAfterMs;
     const history = aggregateHistory(devices);
     stats.historyPreview = historyPreview(history);
     stats.historyRevision = historyRevision(history);
     // 订阅版本戳（只给版本，不给列表本身——同现有 hub，避免每帧都带钱数据）
-    const subs = await dbApi.getSubscriptions(pool, userId);
+    const subs = await dbApi.getSubscriptions(executor, userId);
     stats.subscriptionsUpdatedAt = subs?.updatedAt || '';
+    const rules = await dbApi.getNotificationRules(executor, userId);
+    stats.notificationRulesUpdatedAt = rules?.updatedAt || '';
     return stripSessionsFromStats(stats);
   }
 
+  async function getStats(userId) {
+    return getStatsWithExecutor(userId, pool);
+  }
+
   async function getHistory(userId) {
-    const devices = await loadDevices(userId);
+    const devices = await loadDevices(userId, pool);
     return aggregateHistory(devices);
   }
 
   async function getDevices(userId) {
-    const devices = await loadDevices(userId);
+    const devices = await loadDevices(userId, pool);
     return { devices };
   }
 
@@ -64,19 +76,35 @@ function createHub({ pool, db, sseRegistry, staleAfterMs }) {
     }
     const deviceId = String(payload.deviceId || payload.id);
 
-    // 合并：incoming 缺 limits/history 时沿用旧值（mergeDeviceRecord 已处理）
-    const existing = await dbApi.getDevice(pool, userId, deviceId);
-    const record = stripSessionDetailFromRecord(
-      mergeDeviceRecord(existing, { ...payload, receivedAt: new Date().toISOString() })
-    );
-
-    await dbApi.upsertDevice(pool, userId, record);
+    const transaction = dbApi.withTransaction
+      ? (fn) => dbApi.withTransaction(pool, fn)
+      : async (fn) => fn(pool);
+    const result = await transaction(async (executor) => {
+      if (typeof dbApi.lockUserForUpdate === 'function') {
+        await dbApi.lockUserForUpdate(executor, userId);
+      }
+      // 合并：incoming 缺 limits/history 时沿用旧值（mergeDeviceRecord 已处理）
+      const existing = await dbApi.getDevice(executor, userId, deviceId);
+      const record = stripSessionDetailFromRecord(
+        mergeDeviceRecord(existing, { ...payload, receivedAt: new Date().toISOString() })
+      );
+      await dbApi.upsertDevice(executor, userId, record);
+      const stats = await getStatsWithExecutor(userId, executor);
+      const rules = await dbApi.getNotificationRules(executor, userId);
+      const notifications = await evaluateQuotaNotifications({
+        db: dbApi,
+        executor,
+        userId,
+        rulesDocument: rules,
+        limits: stats.limits
+      });
+      return { record, stats, notifications };
+    });
 
     // 广播给该用户的所有 SSE 连接（不同用户互不可见）
-    const stats = await getStats(userId);
-    sseRegistry.broadcastStats(userId, stats, 'ingest');
+    sseRegistry.broadcastStats(userId, result.stats, 'ingest');
 
-    return { record, stats };
+    return result;
   }
 
   async function deleteDevice(userId, deviceId) {
@@ -89,6 +117,113 @@ function createHub({ pool, db, sseRegistry, staleAfterMs }) {
 
   async function getSubscriptions(userId) {
     return dbApi.getSubscriptions(pool, userId);
+  }
+
+  // ---- notification rules：同 subscriptions 的乐观并发语义 ----
+
+  const notificationRuleQueues = new Map();
+
+  function runNotificationRuleOp(userId, fn) {
+    const prev = notificationRuleQueues.get(userId) || Promise.resolve();
+    const next = prev.then(fn, () => fn());
+    notificationRuleQueues.set(userId, next.catch(() => {}));
+    return next;
+  }
+
+  async function getNotificationRules(userId) {
+    return dbApi.getNotificationRules(pool, userId);
+  }
+
+  function changedNotificationRuleIds(currentRules, nextRules) {
+    const currentById = new Map((currentRules || []).map((rule) => [rule.id, rule]));
+    const nextById = new Map((nextRules || []).map((rule) => [rule.id, rule]));
+    const ids = new Set([...currentById.keys(), ...nextById.keys()]);
+    return [...ids].filter((id) => (
+      JSON.stringify(currentById.get(id) || null) !== JSON.stringify(nextById.get(id) || null)
+    ));
+  }
+
+  async function setNotificationRules(userId, rules, baseUpdatedAt) {
+    return runNotificationRuleOp(userId, async () => {
+      const transaction = dbApi.withTransaction
+        ? (fn) => dbApi.withTransaction(pool, fn)
+        : async (fn) => fn(pool);
+      const next = await transaction(async (executor) => {
+        if (typeof dbApi.lockUserForUpdate === 'function') {
+          await dbApi.lockUserForUpdate(executor, userId);
+        }
+        const current = await dbApi.getNotificationRules(executor, userId);
+        if (isStaleNotificationRulesWrite(current, baseUpdatedAt)) {
+          const error = new Error('stale_write');
+          error.code = 'stale_write';
+          error.current = current;
+          throw error;
+        }
+        const document = notificationRulesDocument(rules, { previous: current });
+        await dbApi.replaceNotificationRules(executor, userId, document);
+        // 阈值、范围或开关变化后，旧周期状态不再适用于新规则。清空后由
+        // 下一份真实额度快照只建基线，避免保存配置当下补发历史告警。
+        if (typeof dbApi.clearQuotaNotificationStates === 'function') {
+          const changedRuleIds = changedNotificationRuleIds(current?.rules, document.rules);
+          await dbApi.clearQuotaNotificationStates(executor, userId, changedRuleIds);
+        }
+        return document;
+      });
+      const stats = await getStats(userId);
+      sseRegistry.broadcastStats(userId, stats, 'notification_rules');
+      return next;
+    });
+  }
+
+  async function getNotificationTargets(userId) {
+    const stats = await getStats(userId);
+    return { updatedAt: stats?.limits?.updatedAt || '', targets: buildNotificationTargets(stats?.limits) };
+  }
+
+  function assertPushConfigured(tokenCrypto) {
+    if (!tokenCrypto || typeof tokenCrypto.encrypt !== 'function') {
+      const error = new Error('push_not_configured');
+      error.code = 'push_not_configured';
+      throw error;
+    }
+  }
+
+  async function registerPushInstallation(userId, input, tokenCrypto = pushTokenCrypto) {
+    assertPushConfigured(tokenCrypto);
+    const installationId = String(input?.installationId || '').trim();
+    const platform = String(input?.platform || '').trim().toLowerCase();
+    const provider = String(input?.provider || '').trim().toLowerCase();
+    const environment = String(input?.environment || 'production').trim().toLowerCase();
+    const appVersion = String(input?.appVersion || '').trim();
+    const supported = (platform === 'android' && provider === 'fcm' && environment === 'production')
+      || (platform === 'ios' && provider === 'apns' && ['sandbox', 'production'].includes(environment));
+    if (!installationId || installationId.length > 128 || !supported || appVersion.length > 64) {
+      const error = new Error('invalid push installation');
+      error.code = 'bad_push_installation';
+      throw error;
+    }
+    const encrypted = tokenCrypto.encrypt(input?.token);
+    const transaction = dbApi.withTransaction
+      ? (fn) => dbApi.withTransaction(pool, fn)
+      : async (fn) => fn(pool);
+    return transaction((executor) => dbApi.registerPushInstallation(executor, userId, {
+      installationId,
+      platform,
+      provider,
+      environment,
+      appVersion,
+      ...encrypted
+    }));
+  }
+
+  async function removePushInstallation(userId, installationId) {
+    const id = String(installationId || '').trim();
+    if (!id || id.length > 128) {
+      const error = new Error('invalid push installation');
+      error.code = 'bad_push_installation';
+      throw error;
+    }
+    return dbApi.removePushInstallation(pool, userId, id);
   }
 
   // per-user 串行队列：Map<userId, Promise>，同用户并发 PUT 串行执行。
@@ -157,7 +292,12 @@ function createHub({ pool, db, sseRegistry, staleAfterMs }) {
     getHistory,
     getDevices,
     getSubscriptions,
-    setSubscriptions
+    setSubscriptions,
+    getNotificationRules,
+    setNotificationRules,
+    getNotificationTargets,
+    registerPushInstallation,
+    removePushInstallation
   };
 }
 

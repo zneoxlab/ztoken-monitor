@@ -141,6 +141,7 @@ test('Codex provider preserves source detail for renderer labels', () => {
   assert.equal(provider.source, 'rpc');
   assert.equal(provider.sourceDetail, 'app');
   assert.equal(provider.accountEmail, 'user@example.com');
+  assert.equal(provider.windows[0].windowId, 'primary');
 });
 
 test('Codex provider reads quota windows from alternate rate limit ids', () => {

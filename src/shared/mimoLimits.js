@@ -265,6 +265,7 @@ async function fetchMimoAccount(account, deps = {}) {
     if (hasTokenPlan) {
       windows.push({
         kind: 'billing',
+        windowId: 'token-plan',
         label: 'Token Plan',
         used: usage.used,
         limit: usage.limit,
@@ -279,6 +280,7 @@ async function fetchMimoAccount(account, deps = {}) {
     if (balance.amount !== null) {
       windows.push({
         kind: 'billing',
+        windowId: 'balance',
         metric: 'credits',
         label: 'Balance',
         remaining: balance.amount,
@@ -292,6 +294,7 @@ async function fetchMimoAccount(account, deps = {}) {
       status: 'ok',
       updatedAt,
       accountKey: cleanText(account.accountKey) || mimoAccountKey(cookieHeader),
+      accountIdentity: accountEmail ? hashKey('mimo-identity', accountEmail) : '',
       accountName: '',
       accountEmail,
       accountLabel: hasTokenPlan || hasExpiredTokenPlan
