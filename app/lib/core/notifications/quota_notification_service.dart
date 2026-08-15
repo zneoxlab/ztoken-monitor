@@ -11,19 +11,46 @@ class QuotaNotificationService {
   static const _channelName = 'com.zneox.ztoken_monitor/notifications';
 
   final MethodChannel _channel;
-  Future<void>? _permissionFuture;
+  Future<bool>? _permissionFuture;
 
-  Future<void> requestPermission() {
-    return _permissionFuture ??= _requestPermission();
+  Future<bool> requestPermission() {
+    final pending = _permissionFuture;
+    if (pending != null) return pending;
+    late final Future<bool> request;
+    request = _requestPermission().whenComplete(() {
+      if (identical(_permissionFuture, request)) _permissionFuture = null;
+    });
+    _permissionFuture = request;
+    return request;
   }
 
-  Future<void> _requestPermission() async {
+  Future<bool> _requestPermission() async {
     try {
-      await _channel.invokeMethod<Object?>('requestPermission');
+      return await _channel.invokeMethod<bool>('requestPermission') == true;
     } on MissingPluginException {
       // 鸿蒙/Web/测试环境没有原生通知桥,不影响主流程。
+      return false;
     } on PlatformException {
       // 用户拒绝权限或系统通知不可用时静默降级。
+      return false;
+    }
+  }
+
+  /// 由设置页显式触发，只验证本机通知权限和系统展示链路，不伪装成
+  /// Hub 已成功完成 FCM/APNs 远程投递。
+  Future<bool> showTestNotification() async {
+    if (!await requestPermission()) return false;
+    try {
+      await _channel.invokeMethod<Object?>('showQuotaNotification', {
+        'title': '配额通知测试',
+        'body': '测试通知已送达，额度刷新和预警将在这里显示。',
+        'tag': 'quota-test',
+      });
+      return true;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
     }
   }
 

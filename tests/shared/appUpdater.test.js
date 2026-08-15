@@ -22,6 +22,28 @@ const {
   shouldSkipAppUpdateCheck
 } = require('../../src/shared/appUpdater');
 
+test('the automatic downloader stands down once an attempt is spent', () => {
+  const base = {
+    automaticAppUpdates: true,
+    updateState: {
+      hasUpdate: true,
+      installSupported: true,
+      dismissedVersion: null,
+      latest: { version: '0.43.0' },
+      downloaded: false,
+      installBusy: false,
+      installRetryBlocked: false
+    }
+  };
+  assert.equal(shouldDownloadAutomaticAppUpdate(base), true);
+  // Otherwise every background check re-downloads an artifact this process can
+  // never install, on a timer, for the rest of the session.
+  assert.equal(shouldDownloadAutomaticAppUpdate({
+    ...base,
+    updateState: { ...base.updateState, installRetryBlocked: true }
+  }), false);
+});
+
 test('source-mode release checks use the public GitHub page instead of the REST API', () => {
   assert.equal(RELEASES_LATEST_URL, 'https://github.com/zneoxlab/ztoken-monitor/releases/latest');
 });

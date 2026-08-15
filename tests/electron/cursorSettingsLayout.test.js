@@ -265,7 +265,9 @@ test('Codex account panel supports per-account enable toggles without showing ti
   assert.match(body, /account\.workspaceKind === 'personal'/);
   assert.match(body, /t\('settings\.codex\.personalWorkspace'\)/);
   assert.match(body, /account\.workspaceLabel/);
-  assert.match(body, /enabled \? limitProviderPresentationApi\.limitProviderDisplayLabel\(account\.accountLabel\) : t\('settings\.codex\.disabled'\)/);
+  assert.match(body, /const codexProviders = localProviderStatuses\('codex'\);/);
+  assert.match(body, /accountIdentityApi\.codexManagedAccountPlanLabel\(account, codexProviders\)/);
+  assert.match(body, /: t\('settings\.codex\.disabled'\)/);
   assert.match(body, /info\.textContent = accountMetadata\.join\(' · '\);/);
   assert.match(body, /right\.append\(info, remove\)/);
   assert.match(body, /row\.append\(input, main, right\)/);
@@ -1149,6 +1151,32 @@ test('sync upload interval setting is exposed in the Multi-device Sync panel', (
     app.indexOf("els.collectionCadenceInput?.addEventListener('change'")
   );
   assert.match(listenerSlice, /saveSettings\(\{ syncUploadIntervalMs: Number\(els\.syncUploadIntervalInput\.value\) \}\)/);
+});
+
+test('remote Hub build status is wired as a separate localized sync hint', () => {
+  const html = readRendererFile('index.html');
+  const app = readRendererFile('app.js');
+  const i18n = readRendererFile('i18n.js');
+  const preload = fs.readFileSync(path.join(rendererDir, '..', 'preload.js'), 'utf8');
+  const main = fs.readFileSync(path.join(rendererDir, '..', 'main.js'), 'utf8');
+  const clientFields = html.slice(html.indexOf('<div id="hubClientFields"'), html.indexOf('<div id="hubHostFields"'));
+
+  assert.match(clientFields, /id="syncClientStatus"[\s\S]*id="hubBuildStatus"[\s\S]*role="status"[\s\S]*hidden/);
+  assert.ok(html.indexOf('hubBuildPresentation.js') < html.indexOf('app.js'));
+  assert.match(app, /getHubBuildStatus/);
+  assert.match(app, /function renderHubBuildStatus\(\)/);
+  assert.doesNotMatch(app, /await refreshHubBuildStatus\(\)/);
+  assert.equal([...app.matchAll(/void refreshHubBuildStatus\(\)/g)].length, 5);
+  const refreshBody = functionBody(app, 'refreshHubBuildStatus', 'syncPeriodTabs');
+  assert.match(refreshBody, /const request = \+\+hubBuildStatusRequest/);
+  assert.equal([...refreshBody.matchAll(/request !== hubBuildStatusRequest/g)].length, 2);
+  assert.match(app, /HUB_BUILD_STATUS_REFRESH_TTL_MS = 5 \* 60 \* 1000/);
+  assert.match(app, /visibilitychange[\s\S]*hubBuildStatusRefreshDue\(\)[\s\S]*void refreshHubBuildStatus\(\)/);
+  assert.match(preload, /getHubBuildStatus: \(\) => ipcRenderer\.invoke\('hub:getBuildStatus'\)/);
+  assert.match(main, /ipcMain\.handle\('hub:getBuildStatus'/);
+  assert.equal([...i18n.matchAll(/'settings\.sync\.hubBuild\.current':/g)].length, 5);
+  assert.equal([...i18n.matchAll(/'settings\.sync\.hubBuild\.updateAvailable':/g)].length, 5);
+  assert.equal([...i18n.matchAll(/'settings\.sync\.hubBuild\.legacy':/g)].length, 0);
 });
 
 test('main settings normalize collection cadence and restart only the device runtime when it changes', () => {

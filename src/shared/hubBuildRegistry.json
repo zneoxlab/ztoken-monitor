@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "components": {
+    "core": [
+      {
+        "revision": 1,
+        "buildId": "sha256:471ef0a506d39a43e6bff54dac28c8b81aa63a243fa8879dbfdf1756f903af53"
+      },
+      {
+        "revision": 2,
+        "buildId": "sha256:af82f3e9f7b5ac3d6b7d32c78e9481426498d2efc47f7862181843b20c57e2fb"
+      },
+      {
+        "revision": 3,
+        "buildId": "sha256:7d5f1d24b0e068cd145912c114e043f10d8880c930608d1561f2a51615c7252c"
+      }
+    ],
+    "node-hub": [
+      {
+        "revision": 1,
+        "buildId": "sha256:dbdaa0b2aa2e8d627b939d6ab76a9029aa2807839fdbe4e7918edcab592fe749"
+      },
+      {
+        "revision": 2,
+        "buildId": "sha256:1ed886fe9149aecfe6336e4adb8875bae8ab44eec034e58d54c292db6d060c14"
+      }
+    ],
+    "cloudflare-worker": [
+      {
+        "revision": 1,
+        "buildId": "sha256:a02f96b20ea72eb22ce4ee81f738023661742830f705c1f89fb71259ec41fd72"
+      }
+    ]
+  }
+}

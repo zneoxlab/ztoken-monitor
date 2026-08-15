@@ -110,6 +110,46 @@ test('anchored tick with valid anchor runs todayOnly scan and derives month/allT
   assert.equal(summary.allTime.totalTokens, 5030, 'allTime should be derived via applyPeriodDelta');
 });
 
+test('full anchors persist local-only Reasonix native views alongside aggregate periods', async () => {
+  const tmpShared = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-native-anchor-'));
+  const nativeView = {
+    sessions: { today: { 'reasonix:session': { client: 'reasonix', totalTokens: 12 } }, month: {}, allTime: {} },
+    projects: { today: { 'token monitor': { label: 'token-monitor', tokens: 12, clients: { reasonix: 12 } } }, month: {}, allTime: {} }
+  };
+  const nativeCache = { getView: () => nativeView };
+  const originalSharedDir = process.env.TOKEN_MONITOR_SHARED_DIR;
+  process.env.TOKEN_MONITOR_SHARED_DIR = tmpShared;
+  let handle;
+  try {
+    const { startCollector } = freshCollector();
+    const updates = [];
+    handle = startCollector({
+      ...baseOptions,
+      clients: 'reasonix',
+      projectsEnabled: true,
+      platform: 'linux',
+      wslScanEnabled: false,
+      reasonixNativeSessionsEnabled: true,
+      reasonixNativeSessionCache: nativeCache,
+      runTokscale: async () => ({ entries: [] }),
+      intervalMs: 60 * 60 * 1000,
+      watchEnabled: false,
+      onUpdate: (summary) => updates.push(summary)
+    });
+
+    await waitForCondition(() => updates.length === 1);
+    const saved = JSON.parse(fs.readFileSync(path.join(tmpShared, 'collector-anchor.json'), 'utf8'));
+    assert.deepEqual(saved.nativeSessions, nativeView.sessions);
+    assert.deepEqual(saved.nativeProjects, nativeView.projects);
+  } finally {
+    if (handle) try { handle.stop(); } catch (_) {}
+    if (originalSharedDir === undefined) delete process.env.TOKEN_MONITOR_SHARED_DIR;
+    else process.env.TOKEN_MONITOR_SHARED_DIR = originalSharedDir;
+    delete require.cache[collectorPath];
+    fs.rmSync(tmpShared, { recursive: true, force: true });
+  }
+});
+
 function emptyWslBundle() {
   return { today: emptyPeriod(), month: emptyPeriod(), allTime: emptyPeriod() };
 }
@@ -477,3 +517,35 @@ function waitForCondition(predicate, timeoutMs = 4000) {
     }, 5);
   });
 }
+
+test('anchor trust separates "cannot be reused" from "cannot be dated"', () => {
+  // One policy, two consumers: startCollector reuses the periods and only loses
+  // its incremental shortcut when the capture time is unusable, while the
+  // widget's cold-start seed has nothing to stand on and declines. Keeping that
+  // split in one function is what stops the two from drifting apart.
+  const { collectorAnchorTrust, configFingerprint } = freshCollector();
+  const now = new Date(2026, 7, 8, 10, 0, 0);
+  const anchor = (overrides = {}) => ({
+    dateKey: '2026-08-08',
+    today: {}, month: {}, allTime: {},
+    configFingerprint: configFingerprint('claude', '2024-01-01', true),
+    fullScanAt: new Date(now.getTime() - 60_000).toISOString(),
+    ...overrides
+  });
+  const options = { clients: 'claude', allTimeSince: '2024-01-01', projectsEnabled: true, now };
+
+  assert.equal(collectorAnchorTrust(anchor(), options).capturedAtMs, now.getTime() - 60_000);
+
+  // Unusable outright.
+  assert.equal(collectorAnchorTrust(null, options), null);
+  assert.equal(collectorAnchorTrust(anchor({ dateKey: '2026-08-07' }), options), null);
+  assert.equal(collectorAnchorTrust(anchor({ allTime: null }), options), null);
+  assert.equal(collectorAnchorTrust(anchor(), { ...options, clients: 'claude,codex' }), null);
+  assert.equal(collectorAnchorTrust(anchor(), { ...options, projectsEnabled: false }), null);
+
+  // Usable, but undatable.
+  assert.equal(collectorAnchorTrust(anchor({ fullScanAt: undefined }), options).capturedAtMs, null);
+  assert.equal(collectorAnchorTrust(anchor({ fullScanAt: 'nope' }), options).capturedAtMs, null);
+  const future = new Date(now.getTime() + 60_000).toISOString();
+  assert.equal(collectorAnchorTrust(anchor({ fullScanAt: future }), options).capturedAtMs, null);
+});

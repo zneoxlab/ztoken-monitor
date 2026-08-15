@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ztoken_monitor/core/notifications/notification_models.dart';
+import 'package:ztoken_monitor/core/notifications/quota_notification_service.dart';
 import 'package:ztoken_monitor/features/limits/widgets/quota_notification_settings.dart';
 import 'package:ztoken_monitor/theme/app_colors.dart';
 import 'package:ztoken_monitor/theme/app_theme.dart';
+
+class _FakeQuotaNotificationService extends QuotaNotificationService {
+  _FakeQuotaNotificationService()
+    : super(channel: const MethodChannel('test.notifications'));
+
+  int testsSent = 0;
+
+  @override
+  Future<bool> showTestNotification() async {
+    testsSent += 1;
+    return true;
+  }
+}
 
 void main() {
   final target = NotificationTarget(
@@ -34,10 +49,11 @@ void main() {
     );
   });
 
-  Future<void> pumpDialog(
+  Future<void> pumpSheet(
     WidgetTester tester, {
     Size size = const Size(800, 700),
     double textScale = 1,
+    List<Override> overrides = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -46,6 +62,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        overrides: overrides,
         child: MaterialApp(
           theme: buildThemeData(porcelain),
           builder: (context, child) => MediaQuery(
@@ -55,7 +72,7 @@ void main() {
             child: child!,
           ),
           home: Scaffold(
-            body: QuotaNotificationSettingsDialog(
+            body: QuotaNotificationSettingsSheet(
               target: target,
               document: document,
             ),
@@ -66,18 +83,58 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('点击账户入口后从底部弹出通知设置', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: buildThemeData(porcelain),
+          home: Scaffold(
+            body: QuotaNotificationSettings(target: target, document: document),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const Key('quota-notification-settings-entry')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('quota-notification-settings-sheet')),
+      findsOneWidget,
+    );
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('发送测试通知'), findsOneWidget);
+  });
+
   testWidgets('账户通知设置展示刷新、剩余阈值和可多选的当前窗口', (tester) async {
-    await pumpDialog(tester);
+    await pumpSheet(tester);
 
     expect(find.text('额度刷新通知'), findsOneWidget);
     expect(find.text('剩余低于此值提醒'), findsOneWidget);
     expect(find.text('5 小时'), findsOneWidget);
     expect(find.text('每周'), findsOneWidget);
-    expect(find.byType(CheckboxListTile), findsNWidgets(2));
+    expect(find.byType(Checkbox), findsNWidgets(2));
+  });
+
+  testWidgets('测试通知按钮调用本机通知服务并提示成功', (tester) async {
+    final service = _FakeQuotaNotificationService();
+    await pumpSheet(
+      tester,
+      overrides: [quotaNotificationServiceProvider.overrideWithValue(service)],
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('send-test-notification')));
+    await tester.tap(find.byKey(const Key('send-test-notification')));
+    await tester.pump();
+
+    expect(service.testsSent, 1);
+    expect(find.text('测试通知已发送，请查看系统通知栏。'), findsOneWidget);
   });
 
   testWidgets('窄屏和放大字体下配置内容可滚动且无布局溢出', (tester) async {
-    await pumpDialog(tester, size: const Size(320, 568), textScale: 1.5);
+    await pumpSheet(tester, size: const Size(320, 568), textScale: 1.5);
 
     expect(find.byType(SingleChildScrollView), findsOneWidget);
     expect(find.text('启用配额通知'), findsOneWidget);

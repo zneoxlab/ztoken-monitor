@@ -45,7 +45,7 @@ test('clientsCsvForSetting uses defaults only for missing settings', () => {
 
 test('default tracked clients include current tokscale-supported tools', () => {
   const clients = DEFAULT_CLIENTS.split(',');
-  for (const client of ['cline', 'kimi', 'qwen', 'grok', 'copilot', 'pi', 'zed', 'kilocode', 'zcode', 'kiro', 'codebuddy', 'workbuddy']) {
+  for (const client of ['cline', 'kimi', 'qwen', 'grok', 'copilot', 'pi', 'zed', 'kilocode', 'zcode', 'kiro', 'codebuddy', 'workbuddy', 'reasonix']) {
     assert.ok(clients.includes(client), `${client} should be tracked by default`);
   }
 });
@@ -73,8 +73,12 @@ test('tracked client defaults, renderer, and README share one display order', ()
   assert.deepEqual(DEFAULT_CLIENTS.split(','), known.filter((client) => client !== 'micode'));
 });
 
-test('default tracked clients are accepted by bundled tokscale', () => {
-  const locallyParsedClients = new Set(['proma']);
+test('default tracked clients are supported by tokscale or a native adapter', () => {
+  // Proma remains a local compatibility adapter. Reasonix is supported by the
+  // bundled Tokscale version and must be verified through its real client list.
+  // dsh 同样走本地解析器（tokscale 已发布版本不认识 dsh；master 已合支持但未发布），
+  // 一旦 bundled tokscale 发布带 dsh 的版本，这里把它从 locallyParsedClients 移除即可。
+  const locallyParsedClients = new Set(['proma', 'dsh']);
   const result = spawnSync(process.execPath, [require.resolve('tokscale/bin.js'), '--help'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const help = `${result.stdout || ''}\n${result.stderr || ''}`;

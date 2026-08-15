@@ -1,7 +1,7 @@
 {
   "name": "ztoken-monitor",
   "productName": "ZT Monitor",
-  "version": "0.42.0",
+  "version": "0.45.0",
   "description": "Live token & cost widget for Claude Code, Codex & Hermes — local-first, optional multi-device sync.",
   "main": "src/electron/main.js",
   "scripts": {
@@ -22,7 +22,8 @@
     "dist:linux": "electron-builder --linux --x64 --publish never",
     "verify:release-artifact-names": "node scripts/verify-updater-artifact-names.js dist",
     "lint": "eslint .",
-    "verify": "npm run lint && npm test"
+    "verify": "npm run lint && npm test",
+    "update:hub-build": "node scripts/update-hub-build.js && npm run sync:worker"
   },
   "build": {
     "appId": "com.zneox.ztmonitor",
@@ -55,7 +56,8 @@
       "icon": "assets/icon.png",
       "extendInfo": {
         "LSUIElement": true
-      }
+      },
+      "minimumSystemVersion": "12.0"
     },
     "win": {
       "target": [
@@ -91,7 +93,11 @@
       "description": "Real-time token, cost, and AI limits widget with multi-device sync for Claude Code, Codex, OpenCode and more."
     },
     "nsis": {
-      "artifactName": "ZT-Monitor-Setup-${version}.${ext}"
+      "artifactName": "ZT-Monitor-Setup-${version}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "scripts/nsis-installer.nsh"
     },
     "portable": {
       "artifactName": "ZT-Monitor-${version}.${ext}"
@@ -137,7 +143,7 @@
     "koffi": "^3.1.4",
     "semver": "^7.8.5",
     "tar": "^7.5.22",
-    "tokscale": "^4.10.0",
+    "tokscale": "^4.13.0",
     "undici": "^7.29.0"
   },
   "devDependencies": {
